@@ -7,12 +7,12 @@ import datetime
 import solar_constants as constants
 
 Rfilenames = list((constants.RPath+i[:-1]) for i in open(constants.RfileListName, 'r'))[:-1]
-times = list(pycdf.CDF(i)['Epoch'][len(pycdf.CDF(i)['Epoch'][:])] for i in tqdm(Rfilenames))
+"""times = list(pycdf.CDF(i)['Epoch'][len(pycdf.CDF(i)['Epoch'][:])] for i in tqdm(Rfilenames))
 #data = list(sum(pycdf.CDF(i)['R'][j] for j in range(len(pycdf.CDF(i)['R'][:]))) for i in tqdm(Rfilenames))
 for i in times:
-    print(i)
+    print(i)"""
 
-"""times = []
+times = []
 for j in tqdm(Rfilenames):
     with pycdf.CDF(j) as currentFile:
         for i in currentFile['Epoch'][:]:
@@ -40,4 +40,4 @@ for i in range(len(times)):
 
 plt.xticks(np.arange(1960, 2030, 5))
 plt.plot([x/12 for x in times], values)
-plt.show()"""
+plt.show()

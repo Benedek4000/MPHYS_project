@@ -1,43 +1,51 @@
-from tqdm import tqdm
-from tqdm import trange
 import numpy as np
-from spacepy import pycdf
-import matplotlib.pyplot as plt
-import datetime
 import solar_constants as constants
+from spacepy import pycdf
 
-Rfilenames = list((constants.RPath+i[:-1]) for i in open(constants.RfileListName, 'r'))[:-1]
-"""times = list(pycdf.CDF(i)['Epoch'][len(pycdf.CDF(i)['Epoch'][:])] for i in tqdm(Rfilenames))
-#data = list(sum(pycdf.CDF(i)['R'][j] for j in range(len(pycdf.CDF(i)['R'][:]))) for i in tqdm(Rfilenames))
-for i in times:
-    print(i)"""
+noOfLinesBeforeData = 3
 
-times = []
-for j in tqdm(Rfilenames):
-    with pycdf.CDF(j) as currentFile:
-        for i in currentFile['Epoch'][:]:
-            if len(times) == 0:
-                times.append(i.year*12+i.month)
-            elif times[-1] != (i.year*12+i.month):
-                times.append(i.year*12+i.month)
-
-shift = times[0]
-values = []
-for i in range(len(times)):
-    values.append(0)
-for j in tqdm(Rfilenames):
-    with pycdf.CDF(j) as currentFile:
-        epochData = currentFile['Epoch'][:]
-        rData = currentFile['R'][:]
-        for i in range(len(epochData)):
-            date = epochData[i]
-            values[date.year*12+date.month-shift] += rData[i]
-
+#READING TXT FILE
+lines = []
 data = []
-for i in range(len(times)):
-    data.append([times[i], values[i]])
-    print(data[i])
+fullData = []
+with open(constants.RdatafileName, 'r') as f:
+    for i in f:
+        i = i[:-1]
+        lines.append(i)
+    for i in range(noOfLinesBeforeData):
+        del lines[0]
 
-plt.xticks(np.arange(1960, 2030, 5))
-plt.plot([x/12 for x in times], values)
-plt.show()
+#ARRANGING DATA
+for i in lines[:-1]: #[:-1] removes empty line
+    currentLine = i.split()
+    if len(currentLine) > 4: #if closed cycle
+        start = int(currentLine[1])*12+int(currentLine[2])
+        end = int(currentLine[4])*12+int(currentLine[5])
+    else: #if open cycle
+        start = int(currentLine[1])*12+int(currentLine[2])
+        counter = 0
+        sum = 0
+        for j in data:
+            sum += j[1]-j[0]
+            counter += 1
+        diff = int(sum/counter)
+        end = start+diff
+    if len(data) != 0:
+        fullData.append([float(data[-1][0]), float(data[-1][1]), float(start-1)])
+    data.append([start, end])
+fullData.append([float(data[-1][0]), float(data[-1][1]), float(np.nan)])
+startData = []
+maxData = []
+endData = []
+for i in fullData:
+    startData.append(i[0])
+    maxData.append(i[1])
+    endData.append(i[2])
+fullData = [startData, maxData, endData]
+#SAVING DATA
+print('Exporting data into '+constants.RresultFileName)
+pycdf.lib.set_backward(False)
+saveFile = pycdf.CDF(constants.RresultFileName, '')
+for i in range(3):
+    saveFile[constants.labels[i]] = fullData[i]
+saveFile.close()

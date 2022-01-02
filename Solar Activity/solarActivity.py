@@ -34,18 +34,30 @@ for i in lines[:-1]: #[:-1] removes empty line
         fullData.append([float(data[-1][0]), float(data[-1][1]), float(start-1)])
     data.append([start, end])
 fullData.append([float(data[-1][0]), float(data[-1][1]), float(np.nan)])
+
+periodData = []
+for i in fullData:
+    periodData.append([float(i[0]), float(i[0]+(i[1]-i[0])/3), 'min'])
+    periodData.append([float(i[0]+(i[1]-i[0])/3), float(i[0]+2*(i[1]-i[0])/3), 'int'])
+    periodData.append([float(i[0]+2*(i[1]-i[0])/3), float(i[1]), 'max'])
+    if np.isnan(i[2]) != True:
+        periodData.append([float(i[1]), float(i[1]+(i[2]-i[1])/3), 'max'])
+        periodData.append([float(i[1]+(i[2]-i[1])/3), float(i[1]+2*(i[2]-i[1])/3), 'int'])
+        periodData.append([float(i[1]+2*(i[2]-i[1])/3), float(i[2]), 'min'])
+
 startData = []
-maxData = []
 endData = []
+typeData = []
 for i in fullData:
     startData.append(i[0])
-    maxData.append(i[1])
-    endData.append(i[2])
-fullData = [startData, maxData, endData]
+    endData.append(i[1])
+    typeData.append(i[2])
+periodData = [startData, endData, typeData]
+
 #SAVING DATA
 print('Exporting data into '+constants.RresultFileName)
 pycdf.lib.set_backward(False)
 saveFile = pycdf.CDF(constants.RresultFileName, '')
 for i in range(3):
-    saveFile[constants.labels[i]] = fullData[i]
+    saveFile[constants.labels[i]] = periodData[i]
 saveFile.close()

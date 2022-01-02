@@ -2,7 +2,6 @@ from spacepy import pycdf
 from tqdm import tqdm
 from tqdm import trange
 import matplotlib.pyplot as plt
-import datetime
 import numpy as np
 import os.path as path
 import math
@@ -39,7 +38,7 @@ histogramFileName = path.join(lPath, 'histogramFull.png')
 
 def fixData(data): #replaces too high and too low values with None
     for i in trange(len(data), desc='Invalidating Erroneous Data', miniters=100000):
-        for j in range(len(data[i])):
+        for j in range(len(data[i])-1):
             if (data[i][j] < -1e5 or data[i][j] > 1e5) or (data[i][j] == 0):
                 data[i][j] = None
     return data
@@ -56,7 +55,7 @@ def setupNumpyArray(fileLengthName, filenames, original_labels, memmapName): #se
         dataLength = sum(len(pycdf.CDF(i)[original_labels[0]][:]) for i in tqdm(filenames, desc='Setting Up Numpy Array'))
         with open(fileLengthName, 'w') as f:
             f.write(str(dataLength))
-    return np.memmap(memmapName, dtype=float, mode='w+', shape=(dataLength,3))
+    return np.memmap(memmapName, dtype=float, mode='w+', shape=(dataLength,4))
 
 def updateWelford(count, mean, M2, newValue):
     # For a new value newValue, compute the new count, new mean, the new M2.
@@ -132,12 +131,17 @@ def processData(filenames, combinedFileName, labels, original_labels, data, bin_
             std_dev = dataFile[labels[7]][:]
     else: #imports data from the original files if combined.cdf does not exist, 
             #then filters erroneous data, distributes data into bins and calculates statistics for the data. then, data is saved along with statistics into combined.cdf
-        counter = 0
-        axis_labels = pycdf.CDF(filenames[0])[original_labels[1]][:]
+        epochs = []
+        axis_labels = pycdf.CDF(filenames[0])[original_labels[2]][:]
         for currentFileName in tqdm(filenames, desc='Importing Data'):
             with pycdf.CDF(currentFileName) as currentFile:
+                counter = 0
                 for currentLine in currentFile[original_labels[0]][:]:
-                    data[counter] = currentLine
+                    data[counter] = np.append(currentLine, 0)
+                    counter += 1
+                counter = 0
+                for currentDate in currentFile[original_labels[1]][:]:
+                    data[counter][3] = currentDate.year*12+currentDate.month
                     counter += 1
         data = fixData(data)
         entry_no = [0,0,0]

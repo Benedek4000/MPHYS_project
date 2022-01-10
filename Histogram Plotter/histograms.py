@@ -100,7 +100,7 @@ def calculateStats(bin_contents, bin_structure, entry_no):
             mean[i] += bin_contents[i][j]*(bin_structure[0]+(0.5+j)*bin_structure[1])
         mean[i] = mean[i]/entry_no[i]
         for j in range(len(bin_contents[i])):
-            std_dev[i] += (bin_contents[i][j]*(bin_structure[0]+(0.5+j)*bin_structure[1]-mean[i]))**2
+            std_dev[i] += bin_contents[i][j]*((bin_structure[0]+(0.5+j)*bin_structure[1]-mean[i]))**2
         std_dev[i] = math.sqrt(std_dev[i]/entry_no[i])
     return mean, std_dev
 

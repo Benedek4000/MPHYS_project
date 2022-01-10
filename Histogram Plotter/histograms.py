@@ -119,7 +119,7 @@ def calculateStats(data):
     print('std_dev:',std_dev)
     return mean, std_dev"""
 
-def processData(filenames, combinedFileName, labels, original_labels, data, bin_structure): #processing data
+def processData(filenames, combinedFileName, solarFileName, labels, original_labels, data, bin_structure): #processing data
     if path.isfile(combinedFileName): #imports data from combined.cdf if it exists
         with pycdf.CDF(combinedFileName) as dataFile:
             print('Importing data from '+combinedFileName)
@@ -133,19 +133,25 @@ def processData(filenames, combinedFileName, labels, original_labels, data, bin_
             #then filters erroneous data, distributes data into bins and calculates statistics for the data. then, data is saved along with statistics into combined.cdf
         epochs = []
         axis_labels = pycdf.CDF(filenames[0])[original_labels[2]][:]
+        counter = 0
         for currentFileName in tqdm(filenames, desc='Importing Data'):
             with pycdf.CDF(currentFileName) as currentFile:
-                counter = 0
+                counter_saved = counter
                 for currentLine in currentFile[original_labels[0]][:]:
                     data[counter] = np.append(currentLine, 0)
                     counter += 1
-                counter = 0
                 for currentDate in currentFile[original_labels[1]][:]:
-                    data[counter][3] = currentDate.year*12+currentDate.month
-                    counter += 1
+                    data[counter_saved][3] = currentDate.year*12+currentDate.month
+                    counter_saved += 1
         data = fixData(data)
+        with pycdf.CDF(solarFileName) as solarFile:
+            solarPeriods = []
+            for i in range(len(solarFile['start'][:])):
+                solarPeriods.append([solarFile['start'][i], solarFile['end'][i], solarFile['type'][i]])
+        for i in solarPeriods:
+            print(i)
         entry_no = [0,0,0]
-        bin_contents = np.zeros((3, bin_structure[2]), dtype=float)
+        bin_contents = np.zeros((9, bin_structure[2]), dtype=float)
         for currentLine in tqdm(data, desc='Distributing Data Into Bins', miniters=100000):
             for i in range(3):
                 if currentLine[i] >= bin_structure[0] and currentLine[i] < (bin_structure[0]+bin_structure[1]*bin_structure[2]):    
@@ -184,7 +190,7 @@ def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramF
 def main():
     MFIfilenames = importFilenames(constants.MFIPath, constants.MFIfileListName)
     data = setupNumpyArray(constants.MFIfileLengthName, MFIfilenames, constants.MFI_labels, constants.MFImemmapFileName)
-    processedData, entryNo, axisLabels, mean, std_dev = processData(MFIfilenames, constants.MFIcombinedFileName, constants.labels, constants.MFI_labels, data, constants.bin_structure)
+    processedData, entryNo, axisLabels, mean, std_dev = processData(MFIfilenames, constants.MFIcombinedFileName, constants.solarActivityFileName, constants.labels, constants.MFI_labels, data, constants.bin_structure)
     plotData(processedData, entryNo, constants.bin_structure, axisLabels, constants.save, constants.histogramFileName)
     
 main()

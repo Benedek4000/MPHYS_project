@@ -48,7 +48,7 @@ for i in fullData:
 startData = []
 endData = []
 typeData = []
-for i in fullData:
+for i in periodData:
     startData.append(i[0])
     endData.append(i[1])
     typeData.append(i[2])

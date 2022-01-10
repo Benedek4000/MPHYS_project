@@ -62,8 +62,8 @@ def updateWelford(count, mean, M2, newValue):
     # mean accumulates the mean of the entire dataset
     # M2 aggregates the squared distance from the mean
     # count aggregates the number of samples seen so far
-    delta = [0,0,0]
-    delta2 = [0,0,0]
+    delta = [0,0,0,0,0,0,0,0,0]
+    delta2 = [0,0,0,0,0,0,0,0,0]
     for i in range(len(newValue)):
         if math.isnan(newValue[i]) == False:
             count[i] += 1
@@ -74,23 +74,36 @@ def updateWelford(count, mean, M2, newValue):
     return count, mean, M2
 
 def finalizeWelford(count, mean, M2): # Retrieve the mean, standard deviation, variance and sample variance
-    std_dev = [0,0,0]
-    variance = [0,0,0]
-    sampleVariance = [0,0,0]
-    for i in range(3):
+    std_dev = [0,0,0,0,0,0,0,0,0]
+    variance = [0,0,0,0,0,0,0,0,0]
+    sampleVariance = [0,0,0,0,0,0,0,0,0]
+    for i in range(len(count)):
         variance[i] = M2[i] / count[i]
         std_dev[i] = math.sqrt(variance[i])
         sampleVariance[i] = M2[i] / (count[i] - 1)
     return (mean, std_dev, variance, sampleVariance)
 
-def calculateStats(data):
-    count = [0,0,0]
-    mean = [0,0,0]
-    M2 = [0,0,0]
+"""def calculateStats(data):
+    count = [0,0,0,0,0,0,0,0,0]
+    mean = [0,0,0,0,0,0,0,0,0]
+    M2 = [0,0,0,0,0,0,0,0,0]
     for i in trange(len(data), desc='Calculating \u03BC and \u03C3', miniters=10000):
         count, mean, M2 = updateWelford(count, mean, M2, data[i])
     mean, std_dev, variance, sampleVariance = finalizeWelford(count, mean, M2)
+    return mean, std_dev"""
+
+def calculateStats(bin_contents, bin_structure, entry_no):
+    mean = [0,0,0,0,0,0,0,0,0]
+    std_dev = [0,0,0,0,0,0,0,0,0]
+    for i in trange(len(bin_contents), desc='Calculating \u03BC and \u03C3', miniters=10000):
+        for j in range(len(bin_contents[i])):
+            mean[i] += bin_contents[i][j]*(bin_structure[0]+(0.5+j)*bin_structure[1])
+        mean[i] = mean[i]/entry_no[i]
+        for j in range(len(bin_contents[i])):
+            std_dev[i] += (bin_contents[i][j]*(bin_structure[0]+(0.5+j)*bin_structure[1]-mean[i]))**2
+        std_dev[i] = math.sqrt(std_dev[i]/entry_no[i])
     return mean, std_dev
+
 
 """def calculateStats(data, entry_no, fileLengthName): #USES TRADITIONAL METHODS INSTEAD OF WELFORD'S ALGORITHM, BUT SLOWER
     with open(fileLengthName, 'r') as f:
@@ -125,14 +138,17 @@ def processData(filenames, combinedFileName, solarFileName, labels, original_lab
             print('Importing data from '+combinedFileName)
             bin_structure = dataFile[labels[0]][:]
             entry_no = dataFile[labels[1]][:]
-            bin_contents = [dataFile[labels[2]][:], dataFile[labels[3]][:], dataFile[labels[4]][:]]
-            axis_labels = dataFile[labels[5]][:]
-            mean = dataFile[labels[6]][:]
-            std_dev = dataFile[labels[7]][:]
+            bin_contents = [dataFile[labels[2]][:], dataFile[labels[3]][:], dataFile[labels[4]][:], dataFile[labels[5]][:], dataFile[labels[6]][:], dataFile[labels[7]][:], dataFile[labels[8]][:], dataFile[labels[9]][:], dataFile[labels[10]][:]]
+            axis_labels = dataFile[labels[11]][:]
+            mean = dataFile[labels[12]][:]
+            std_dev = dataFile[labels[13]][:]
     else: #imports data from the original files if combined.cdf does not exist, 
             #then filters erroneous data, distributes data into bins and calculates statistics for the data. then, data is saved along with statistics into combined.cdf
-        epochs = []
-        axis_labels = pycdf.CDF(filenames[0])[original_labels[2]][:]
+        orig_axis_labels = pycdf.CDF(filenames[0])[original_labels[2]][:]
+        axis_labels = []
+        for i in ['Minimum ', 'Intermediate ', 'Maximum ']:
+            for j in orig_axis_labels:
+                axis_labels.append(i+j)
         counter = 0
         for currentFileName in tqdm(filenames, desc='Importing Data'):
             with pycdf.CDF(currentFileName) as currentFile:
@@ -144,43 +160,66 @@ def processData(filenames, combinedFileName, solarFileName, labels, original_lab
                     data[counter_saved][3] = currentDate.year*12+currentDate.month
                     counter_saved += 1
         data = fixData(data)
+        #import solar periods
         with pycdf.CDF(solarFileName) as solarFile:
             solarPeriods = []
             for i in range(len(solarFile['start'][:])):
                 solarPeriods.append([solarFile['start'][i], solarFile['end'][i], solarFile['type'][i]])
-        for i in solarPeriods:
-            print(i)
-        entry_no = [0,0,0]
+        #create epoch-lists for min, int and max
+        minList = np.empty(shape=0)
+        intList = np.empty(shape=0)
+        maxList = np.empty(shape=0)
+        for currentPeriod in solarPeriods:
+            start = math.floor(currentPeriod[0])
+            end = math.floor(currentPeriod[1])
+            type = currentPeriod[2]
+            monthsIncluded = np.arange(start, end, step=1)
+            if type == 'min':
+                for i in monthsIncluded:
+                    minList = np.append(minList, i)
+            if type == 'int':
+                for i in monthsIncluded:
+                    intList = np.append(intList, i)
+            if type == 'max':
+                for i in monthsIncluded:
+                    maxList = np.append(maxList, i)
+        entry_no = [0,0,0,0,0,0,0,0,0] #min(x,y,z), int(x,y,z), max(x,y,z)
         bin_contents = np.zeros((9, bin_structure[2]), dtype=float)
         for currentLine in tqdm(data, desc='Distributing Data Into Bins', miniters=100000):
+            offset = 0
+            if currentLine[3] in minList:
+                offset = 0
+            if currentLine[3] in intList:
+                offset = 3
+            if currentLine[3] in maxList:
+                offset = 6
             for i in range(3):
                 if currentLine[i] >= bin_structure[0] and currentLine[i] < (bin_structure[0]+bin_structure[1]*bin_structure[2]):    
-                    bin_contents[i][math.floor((currentLine[i]-bin_structure[0])/bin_structure[1])] += 1
-                    entry_no[i] += 1
-        mean, std_dev = calculateStats(data)
+                    bin_contents[i+offset][math.floor((currentLine[i]-bin_structure[0])/bin_structure[1])] += 1
+                    entry_no[i+offset] += 1
+        mean, std_dev = calculateStats(bin_contents, bin_structure, entry_no)#does not use welford anymore
         #mean, std_dev = calculateStats(data, entry_no, constants.fileLengthName) #USES TRADITIONAL METHODS INSTEAD OF WELFORD'S ALGORITHM, BUT SLOWER
         print('Exporting data into '+combinedFileName)
         pycdf.lib.set_backward(False)
         saveFile = pycdf.CDF(combinedFileName, '')
         saveFile[labels[0]] = bin_structure
         saveFile[labels[1]] = entry_no
-        for i in range(3):
+        for i in range(9):
             saveFile[labels[i+2]] = bin_contents[i]
-        saveFile[labels[5]] = axis_labels
-        saveFile[labels[6]] = mean
-        saveFile[labels[7]] = std_dev
+        saveFile[labels[11]] = axis_labels
+        saveFile[labels[12]] = mean
+        saveFile[labels[13]] = std_dev
         saveFile.close()
     return bin_contents, entry_no, axis_labels, mean, std_dev
 
 def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramFileName):
-    fig, axs = plt.subplots(nrows=1, ncols=3)
+    fig, axs = plt.subplots(nrows=3, ncols=3)
     for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
         x_axis = np.linspace(bin_structure[0]+0.5*bin_structure[1], bin_structure[0]+bin_structure[1]*bin_structure[2]+0.5*bin_structure[1], num = bin_structure[2])
         #x_axis: start = bin1_lower_limit+0.5*bin_width, stop = bin1_lower_limit+bin_width*no_of_bins+0.5*bin_width, num = no_of_bins
         ax.plot(x_axis, processedData[i]/entryNo[i])
         ax.set(xlabel=axisLabels[i], ylabel='log % Occurence')
-        ax.set_yscale('log')
-        ax.label_outer()    
+        ax.set_yscale('log')    
     if save:
         plt.savefig(histogramFileName, dpi=100)
     else:

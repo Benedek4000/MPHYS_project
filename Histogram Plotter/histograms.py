@@ -212,7 +212,7 @@ def processData(filenames, combinedFileName, solarFileName, labels, original_lab
         saveFile.close()
     return bin_contents, entry_no, axis_labels, mean, std_dev
 
-def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramFileName):
+def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramFileName, mean, std_dev):
     fig, axs = plt.subplots(nrows=3, ncols=3)
     for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
         x_axis = np.linspace(bin_structure[0]+0.5*bin_structure[1], bin_structure[0]+bin_structure[1]*bin_structure[2]+0.5*bin_structure[1], num = bin_structure[2])
@@ -220,6 +220,12 @@ def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramF
         ax.plot(x_axis, processedData[i]/entryNo[i])
         ax.set(xlabel=axisLabels[i], ylabel='log % Occurence')
         ax.set_yscale('log')    
+        ax.axvline(mean[i], color='red', linewidth=1.5, label='\u03BC = '+'{0:.3f}'.format(mean[i]))
+        ax.axvline(std_dev[i], color='green', linewidth=0.5, label='\u03C3 = '+'{0:.3f}'.format(std_dev[i]))
+        ax.axvline(-std_dev[i], color='green', linewidth=0.5)
+        ax.axvline(5*std_dev[i], color='purple', linewidth=1.0, label='5\u03C3 = '+'{0:.3f}'.format(5*std_dev[i]))
+        ax.axvline(-5*std_dev[i], color='purple', linewidth=1.0)
+        ax.legend(loc='upper right')
     if save:
         plt.savefig(histogramFileName, dpi=100)
     else:
@@ -230,6 +236,6 @@ def main():
     MFIfilenames = importFilenames(constants.MFIPath, constants.MFIfileListName)
     data = setupNumpyArray(constants.MFIfileLengthName, MFIfilenames, constants.MFI_labels, constants.MFImemmapFileName)
     processedData, entryNo, axisLabels, mean, std_dev = processData(MFIfilenames, constants.MFIcombinedFileName, constants.solarActivityFileName, constants.labels, constants.MFI_labels, data, constants.bin_structure)
-    plotData(processedData, entryNo, constants.bin_structure, axisLabels, constants.save, constants.histogramFileName)
+    plotData(processedData, entryNo, constants.bin_structure, axisLabels, constants.save, constants.histogramFileName, mean, std_dev)
     
 main()

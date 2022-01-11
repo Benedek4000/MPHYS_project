@@ -4,6 +4,7 @@ from tqdm import trange
 import matplotlib.pyplot as plt
 import numpy as np
 import os.path as path
+import os
 import math
 import histogram_constants as constants
 
@@ -210,6 +211,7 @@ def processData(filenames, combinedFileName, solarFileName, labels, original_lab
         saveFile[labels[12]] = mean
         saveFile[labels[13]] = std_dev
         saveFile.close()
+        os.remove(constants.MFImemmapFileName)
     return bin_contents, entry_no, axis_labels, mean, std_dev
 
 def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramFileName, mean, std_dev):

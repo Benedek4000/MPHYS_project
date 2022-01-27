@@ -6,7 +6,10 @@ import numpy as np
 import os.path as path
 import os
 import math
+import datetime as dt
 import vb_constants as constants
+from matplotlib.cm import coolwarm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 #create memmap array for [epoch,bgsm,vgsm data]
 #import bgsm + epoch into array
@@ -73,12 +76,13 @@ def importData(data, MFIfilenames, SWEfilenames, original_MFI_lables, original_S
                 for currentMFIline in currentMFIfile[original_MFI_labels[0]][:]:
                     for i in range(3):
                         data[temp_counter][i+1] = currentMFIline[i]
-                        temp_counter += 1
+                    temp_counter += 1
                 swedata = {}
                 for index, currentSWEEpoch in enumerate(currentSWEfile[original_SWE_labels[1]][:]):
                     swedata[str(1000000*currentSWEEpoch.year+10000*currentSWEEpoch.month+100*currentSWEEpoch.day+currentSWEEpoch.hour)[:10]] = currentSWEfile[original_SWE_labels[0]][index]
                 currentSWEEpoch = currentSWEfile[original_SWE_labels[1]][0]
-                swedata[str(1000000*(currentSWEEpoch.year+1)+10000*currentSWEEpoch.month+100*currentSWEEpoch.day+currentSWEEpoch.hour)[:10]] = [None, None, None]
+                nextday = currentSWEEpoch+dt.timedelta(days=1)
+                swedata[str(1000000*nextday.year+10000*nextday.month+100*nextday.day+nextday.hour)[:10]] = [None, None, None]
                 for i in range(saved_counter, counter, 1):
                     for j in range(3):
                         data[i][j+4] = swedata[str(data[i][0])[:10]][j]
@@ -122,16 +126,85 @@ def fixData(data): #replaces too high and too low values with None
     return data
 
 def plotData(data, save, histogramFileName):
-    fig, axs = plt.subplots(ncols=3)
+    #np.memmap(memmapName, dtype=float, mode='w+', shape=(dataLength,7))
+    """fig, axs = plt.subplots(ncols=4)
+    arraysize=len(data)
     for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
-        xaxis=[]
-        yaxis=[]
-        for j in data:
-            xaxis.append(j[i+4])
-            yaxis.append(j[i+1])
-        ax.scatter(xaxis,yaxis, s=2)
+        arrayToPlot = np.memmap(constants.lPath+'plot'+str(i)+'.dat', dtype=float, mode='w+', shape=(arraysize,2))
+        if i != 3:
+            for index, j in enumerate(data):
+                arrayToPlot[index][0] = j[i+4]
+                arrayToPlot[index][1] = j[i+1]
+        else:
+            for index, j in enumerate(data):
+                arrayToPlot[index][0] = math.sqrt(j[4]**2+j[5]**2+j[6]**2)
+                arrayToPlot[index][1] = math.sqrt(j[1]**2+j[2]**2+j[3]**2)
+        newArrayToPlot = np.memmap(constants.lPath+'VBToPlot.dat', dtype=float, mode='w+', shape=(2,arraysize))
+        counter = 0
+        for index, j in enumerate(arrayToPlot):
+            if np.isnan(arrayToPlot[index][0]) == False and np.isnan(arrayToPlot[index][1]) == False:
+                newArrayToPlot[0][counter] = arrayToPlot[index][0]
+                newArrayToPlot[1][counter] = arrayToPlot[index][1]
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        heatmap, xedges, yedges = np.histogram2d(newArrayToPlot[0], newArrayToPlot[1], bins=100)
+        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+        #im = ax.imshow(heatmap.T, extent=extent, origin='lower', cmap='bone')
+        im = ax.imshow(newArrayToPlot[0], newArrayToPlot[1], vmin=0, vmax=1)
+    fig.colorbar(im, cax=cax, orientation='vertical')"""
+    arraysize=len(data)
+    heatmap = []
+    xedges = []
+    yedges = []
+    for i in trange(4, desc='Plotting Data'): #GO BACK TO 4
+        arrayToPlot = np.memmap(constants.lPath+'plot'+str(i)+'.dat', dtype=float, mode='w+', shape=(arraysize,2))
+        if i != 3:
+            for index, j in enumerate(data):
+                arrayToPlot[index][0] = j[i+4]
+                arrayToPlot[index][1] = j[i+1]
+        else:
+            for index, j in enumerate(data):
+                arrayToPlot[index][0] = math.sqrt(j[4]**2+j[5]**2+j[6]**2)
+                arrayToPlot[index][1] = math.sqrt(j[1]**2+j[2]**2+j[3]**2)
+        newArrayToPlot = np.memmap(constants.lPath+'VBToPlot.dat', dtype=float, mode='w+', shape=(2,arraysize))
+        counter = 0
+        for index, j in enumerate(arrayToPlot):
+            if np.isnan(arrayToPlot[index][0]) == False and np.isnan(arrayToPlot[index][1]) == False:
+                newArrayToPlot[0][counter] = arrayToPlot[index][0]
+                newArrayToPlot[1][counter] = arrayToPlot[index][1]
+                counter += 1
+        h, xe, ye, image = plt.hist2d(newArrayToPlot[0], newArrayToPlot[1], bins=50)#, range=[[-40,40],[-900,-200]])
+        heatmap.append(h)
+        xedges.append(xe)
+        yedges.append(ye)
+    fig = plt.figure()
+
+    ax1=fig.add_subplot(221)
+    im1 = ax1.imshow(heatmap[0], cmap='hot', interpolation='nearest')#, extent=[xedges[0][0], xedges[0][-1], yedges[0][0], yedges[0][-1]])
+    divider = make_axes_locatable(ax1)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im1, cax=cax, orientation='vertical')
+    
+    ax2=fig.add_subplot(222)
+    im2 = ax2.imshow(heatmap[1], cmap='hot', interpolation='nearest')#, extent=[xedges[1][0], xedges[1][-1], yedges[1][0], yedges[1][-1]])
+    divider = make_axes_locatable(ax2)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im2, cax=cax, orientation='vertical')
+
+    ax3=fig.add_subplot(223)
+    im3 = ax3.imshow(heatmap[2], cmap='hot', interpolation='nearest')#, extent=[xedges[2][0], xedges[2][-1], yedges[2][0], yedges[2][-1]])
+    divider = make_axes_locatable(ax3)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im3, cax=cax, orientation='vertical')
+
+    ax4=fig.add_subplot(224)
+    im4 = ax4.imshow(heatmap[3], cmap='hot', interpolation='nearest')#, extent=[xedges[3][0], xedges[3][-1], yedges[3][0], yedges[3][-1]])
+    divider = make_axes_locatable(ax4)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im4, cax=cax, orientation='vertical')
+
     if save:
-        plt.savefig(histogramFileName, dpi=100)
+        plt.savefig(histogramFileName, dpi=300)
     else:
         plt.show()
     return None

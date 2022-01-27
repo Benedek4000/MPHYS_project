@@ -15,5 +15,5 @@ VBcombinedFileName = path.join(lPath, 'combinedVB.cdf')
 VBmemmapFileName = path.join(lPath, 'data.dat')
 
 labels = ['Epoch, ''BGSM_X', 'BGSM_Y', 'BGSM_Z', 'V_GSM_X', 'V_GSM_Y', 'V_GSM_Z', 'labels']
-save = False #True to save the plot, False to show the plot
+save = True #True to save the plot, False to show the plot
 histogramFileName = path.join(lPath, 'VBhistogramFull.png')

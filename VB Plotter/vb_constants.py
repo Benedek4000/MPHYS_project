@@ -14,6 +14,8 @@ SWE_labels = ['V_GSM', 'Epoch', 'label_V_GSM']
 VBcombinedFileName = path.join(lPath, 'combinedVB.cdf')
 VBmemmapFileName = path.join(lPath, 'data.dat')
 
-labels = ['Epoch, ''BGSM_X', 'BGSM_Y', 'BGSM_Z', 'V_GSM_X', 'V_GSM_Y', 'V_GSM_Z', 'labels']
+Bbin_structure = [-50, 1, 100] #[bin1 lower limit, bin width, number of bins]
+Vbin_structure = [-800, 18, 100] #[bin1 lower limit, bin width, number of bins]
+labels = ['Vstructure', 'Bstructure', 'X', 'Y', 'Z', 'Mag' 'labels']
 save = True #True to save the plot, False to show the plot
 histogramFileName = path.join(lPath, 'VBhistogramFull.png')

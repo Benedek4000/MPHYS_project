@@ -125,6 +125,27 @@ def fixData(data): #replaces too high and too low values with None
                 data[i][j] = None
     return data
 
+def distributeBins(data, Vbins, Bbins):
+    #data: lots of records, each line: data[0]=V, data[1]=B
+    #bin structure: [bin1 lower limit, bin width, number of bins]
+    bin_contents = np.zeros((Vbins[2], Bbins[2]), dtype=float)
+    entry_no = 0
+    for currentLine in tqdm(data, desc='Distributing Data Into Bins', miniters=100000):
+        if (currentLine[0] >= Vbins[0] and currentLine[0] < (Vbins[0]+Vbins[1]*Vbins[2])) and (currentLine[1] >= Bbins[0] and currentLine[1] < (Bbins[0]+Bbins[1]*Bbins[2])):    
+            bin_contents[math.floor((currentLine[0]-Vbins[0])/Vbins[1])][math.floor((currentLine[1]-Bbins[0])/Bbins[1])] += 1
+            entry_no += 1
+    return bin_contents, entry_no
+
+def saveData(fileName, data, Vbins, Bbins, labels):
+    print('Exporting data into '+fileName)
+    pycdf.lib.set_backward(False)
+    saveFile = pycdf.CDF(fileName, '')
+    saveFile[labels[0]] = Vbins
+    saveFile[labels[1]] = Bbins
+    for i in range(4):
+        saveFile[labels[i+2]] = data[i]
+    saveFile.close()
+
 def plotData(data, save, histogramFileName):
     #np.memmap(memmapName, dtype=float, mode='w+', shape=(dataLength,7))
     """fig, axs = plt.subplots(ncols=4)
@@ -154,10 +175,8 @@ def plotData(data, save, histogramFileName):
     fig.colorbar(im, cax=cax, orientation='vertical')"""
     arraysize=len(data)
     heatmap = []
-    xedges = []
-    yedges = []
-    for i in trange(4, desc='Plotting Data'): #GO BACK TO 4
-        arrayToPlot = np.memmap(constants.lPath+'plot'+str(i)+'.dat', dtype=float, mode='w+', shape=(arraysize,2))
+    for i in trange(4, desc='Preparing Data for Distribution'):
+        arrayToPlot = np.memmap(constants.lPath+'dataToPlot'+'.dat', dtype=float, mode='w+', shape=(arraysize,2))
         if i != 3:
             for index, j in enumerate(data):
                 arrayToPlot[index][0] = j[i+4]
@@ -166,18 +185,14 @@ def plotData(data, save, histogramFileName):
             for index, j in enumerate(data):
                 arrayToPlot[index][0] = math.sqrt(j[4]**2+j[5]**2+j[6]**2)
                 arrayToPlot[index][1] = math.sqrt(j[1]**2+j[2]**2+j[3]**2)
-        newArrayToPlot = np.memmap(constants.lPath+'VBToPlot.dat', dtype=float, mode='w+', shape=(2,arraysize))
-        counter = 0
-        for index, j in enumerate(arrayToPlot):
-            if np.isnan(arrayToPlot[index][0]) == False and np.isnan(arrayToPlot[index][1]) == False:
-                newArrayToPlot[0][counter] = arrayToPlot[index][0]
-                newArrayToPlot[1][counter] = arrayToPlot[index][1]
-                counter += 1
-        h, xe, ye, image = plt.hist2d(newArrayToPlot[0], newArrayToPlot[1], bins=50)#, range=[[-40,40],[-900,-200]])
-        heatmap.append(h)
-        xedges.append(xe)
-        yedges.append(ye)
+        h,e = distributeBins(arrayToPlot, constants.Vbin_structure, constants.Bbin_structure)#, range=[[-40,40],[-900,-200]])
+        entry_no = [0,0,0,0]
+        heatmap.append(h/e)
+        entry_no[i] = e
     fig = plt.figure()
+
+    #saveData
+    saveData(constants.VBcombinedFileName, heatmap, constants.Vbin_structure, constants.Bbin_structure, constants.labels)
 
     ax1=fig.add_subplot(221)
     im1 = ax1.imshow(heatmap[0], cmap='hot', interpolation='nearest')#, extent=[xedges[0][0], xedges[0][-1], yedges[0][0], yedges[0][-1]])

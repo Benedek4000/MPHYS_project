@@ -8,7 +8,7 @@ import os
 import math
 import datetime as dt
 import vb_constants as constants
-from matplotlib.cm import coolwarm
+from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 #create memmap array for [epoch,bgsm,vgsm data]
@@ -146,33 +146,7 @@ def saveData(fileName, data, Vbins, Bbins, labels):
         saveFile[labels[i+2]] = data[i]
     saveFile.close()
 
-def plotData(data, save, histogramFileName):
-    #np.memmap(memmapName, dtype=float, mode='w+', shape=(dataLength,7))
-    """fig, axs = plt.subplots(ncols=4)
-    arraysize=len(data)
-    for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
-        arrayToPlot = np.memmap(constants.lPath+'plot'+str(i)+'.dat', dtype=float, mode='w+', shape=(arraysize,2))
-        if i != 3:
-            for index, j in enumerate(data):
-                arrayToPlot[index][0] = j[i+4]
-                arrayToPlot[index][1] = j[i+1]
-        else:
-            for index, j in enumerate(data):
-                arrayToPlot[index][0] = math.sqrt(j[4]**2+j[5]**2+j[6]**2)
-                arrayToPlot[index][1] = math.sqrt(j[1]**2+j[2]**2+j[3]**2)
-        newArrayToPlot = np.memmap(constants.lPath+'VBToPlot.dat', dtype=float, mode='w+', shape=(2,arraysize))
-        counter = 0
-        for index, j in enumerate(arrayToPlot):
-            if np.isnan(arrayToPlot[index][0]) == False and np.isnan(arrayToPlot[index][1]) == False:
-                newArrayToPlot[0][counter] = arrayToPlot[index][0]
-                newArrayToPlot[1][counter] = arrayToPlot[index][1]
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        heatmap, xedges, yedges = np.histogram2d(newArrayToPlot[0], newArrayToPlot[1], bins=100)
-        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-        #im = ax.imshow(heatmap.T, extent=extent, origin='lower', cmap='bone')
-        im = ax.imshow(newArrayToPlot[0], newArrayToPlot[1], vmin=0, vmax=1)
-    fig.colorbar(im, cax=cax, orientation='vertical')"""
+def processData(data):
     arraysize=len(data)
     heatmap = []
     for i in trange(4, desc='Preparing Data for Distribution'):
@@ -189,52 +163,73 @@ def plotData(data, save, histogramFileName):
         entry_no = [0,0,0,0]
         heatmap.append(h/e)
         entry_no[i] = e
+    return heatmap
+
+def plotData(heatmap, Vbins, Bbins, save, histogramFileName):
+
     fig = plt.figure()
 
-    #saveData
-    saveData(constants.VBcombinedFileName, heatmap, constants.Vbin_structure, constants.Bbin_structure, constants.labels)
+    xedges=[Bbins[0], Bbins[0]+Bbins[1]*Bbins[2]]
+    yedges=[Vbins[0]+Vbins[1]*Vbins[2], Vbins[0]]
+
+    fig.suptitle('Solar Wind Velocity against Magnetic Field Strength heatmap', fontsize=16)
 
     ax1=fig.add_subplot(221)
-    im1 = ax1.imshow(heatmap[0], cmap='hot', interpolation='nearest')#, extent=[xedges[0][0], xedges[0][-1], yedges[0][0], yedges[0][-1]])
+    ax1.set(xlabel='B (nT) in XGSM', ylabel='V (km/s) in XGSM')
+    im1 = ax1.imshow(heatmap[0][:35,:], cmap='hot_r', interpolation='nearest', aspect='auto', norm=LogNorm(vmin=10**-8, vmax=0.01), extent=[xedges[0], xedges[-1], yedges[0]-(yedges[0]-yedges[1])*65/100, yedges[-1]])
     divider = make_axes_locatable(ax1)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im1, cax=cax, orientation='vertical')
     
     ax2=fig.add_subplot(222)
-    im2 = ax2.imshow(heatmap[1], cmap='hot', interpolation='nearest')#, extent=[xedges[1][0], xedges[1][-1], yedges[1][0], yedges[1][-1]])
+    ax2.set(xlabel='B (nT) in YGSM', ylabel='V (km/s) in YGSM')
+    im2 = ax2.imshow(heatmap[1][25:75,:], cmap='hot_r', interpolation='nearest', aspect='auto', norm=LogNorm(vmin=10**-8, vmax=0.01), extent=[xedges[0], xedges[-1], yedges[0]-(yedges[0]-yedges[1])/4, yedges[-1]+(yedges[0]-yedges[1])/4])
     divider = make_axes_locatable(ax2)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im2, cax=cax, orientation='vertical')
 
     ax3=fig.add_subplot(223)
-    im3 = ax3.imshow(heatmap[2], cmap='hot', interpolation='nearest')#, extent=[xedges[2][0], xedges[2][-1], yedges[2][0], yedges[2][-1]])
+    ax3.set(xlabel='B (nT) in ZGSM', ylabel='V (km/s) in ZGSM')
+    im3 = ax3.imshow(heatmap[2][25:75,:], cmap='hot_r', interpolation='nearest', aspect='auto', norm=LogNorm(vmin=10**-8, vmax=0.01), extent=[xedges[0], xedges[-1], yedges[0]-(yedges[0]-yedges[1])/4, yedges[-1]+(yedges[0]-yedges[1])/4])
     divider = make_axes_locatable(ax3)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im3, cax=cax, orientation='vertical')
 
     ax4=fig.add_subplot(224)
-    im4 = ax4.imshow(heatmap[3], cmap='hot', interpolation='nearest')#, extent=[xedges[3][0], xedges[3][-1], yedges[3][0], yedges[3][-1]])
+    ax4.set(xlabel='|B| (nT)', ylabel='|V| (km/s)')
+    im4 = ax4.imshow(heatmap[3][55:,50:], cmap='hot_r', interpolation='nearest', aspect='auto', norm=LogNorm(vmin=10**-8, vmax=0.01), extent=[0, xedges[-1], -yedges[-1], 1800*0.55-1000])
     divider = make_axes_locatable(ax4)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im4, cax=cax, orientation='vertical')
 
+    fig.subplots_adjust(wspace=0.25)
     if save:
-        plt.savefig(histogramFileName, dpi=300)
+        fig.set_size_inches(17, 10)
+        plt.savefig(histogramFileName, dpi=100, bbox_inches='tight')
     else:
         plt.show()
     return None
 
 def main():
-    MFIfilenames = importFilenames(MFIPath, MFIfileListName)
-    SWEfilenames = importFilenames(SWEPath, SWEfileListName)
-    data = setupNumpyArray(MFIfileLengthName, MFIfilenames, original_MFI_labels, VBmemmapFileName)
-    data = importData(data, MFIfilenames, SWEfilenames, original_MFI_labels, original_SWE_labels)
-    data = fixData(data)
-    """for i in data:
-        currentline=''
-        for j in i:
-            currentline=currentline+str(round(j,2))+';'
-        print(currentline)"""
-    plotData(data, constants.save, constants.histogramFileName)
+    combinedFileName = constants.VBcombinedFileName
+    labels = constants.labels
+    if path.isfile(combinedFileName):
+        with pycdf.CDF(combinedFileName) as dataFile:
+            print('Importing data from '+combinedFileName)
+            Vstructure = dataFile[labels[0]][:]
+            Bstructure = dataFile[labels[1]][:]
+            heatmap = [dataFile[labels[2]][:], dataFile[labels[3]][:], dataFile[labels[4]][:], dataFile[labels[5]][:]]
+    else:
+        MFIfilenames = importFilenames(MFIPath, MFIfileListName)
+        SWEfilenames = importFilenames(SWEPath, SWEfileListName)
+        data = setupNumpyArray(MFIfileLengthName, MFIfilenames, original_MFI_labels, VBmemmapFileName)
+        data = importData(data, MFIfilenames, SWEfilenames, original_MFI_labels, original_SWE_labels)
+        data = fixData(data)
+        heatmap = processData(data)
+        Vstructure = constants.Vbin_structure
+        Bstructure = constants.Bbin_structure
+        #saveData
+        saveData(constants.VBcombinedFileName, heatmap, constants.Vbin_structure, constants.Bbin_structure, constants.labels)
+    plotData(heatmap, Vstructure, Bstructure, constants.save, constants.histogramFileName)
 
 main()

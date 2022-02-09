@@ -157,29 +157,51 @@ def generateG(processedZ):
                         currentLine.append(sum(i >= j for j in processedZ[solar_tag][coordinate][minmax]))
                     if minmax == 1: #if list of maxima
                         currentLine.append(sum(i <= j for j in processedZ[solar_tag][coordinate][minmax]))
-                G[solar_tag][coordinate][minmax] = currentLine
+                #normalise G
+                norm_factor = max(currentLine)
+                G[solar_tag][coordinate][minmax] = [currentElement/norm_factor for currentElement in currentLine]
     return G
+
+def fit_curves(z, G):
+    parameters = [[[[], []], [[], []], [[], []]], 
+                [[[], []], [[], []], [[], []]], 
+                [[[], []], [[], []], [[], []]]]
+    for solar_tag in range(3):
+        for coordinate in range(3):
+            for minmax in range(2):
+                popt, _ = curve_fit(GEV_CDF, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=50000)
+                xi, mu, sigma = popt
+                parameters[solar_tag][coordinate][minmax] = [xi, mu, sigma]
+    return parameters
+                
 
 def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, save, plotFileName):
     #get block minima and maxima. process and save data, if it can't be loaded. data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
     data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
-    processedZ = distributeData(data)
+    """processedZ = distributeData(data)
     processedG = generateG(processedZ)
-    
-    fig = plt.figure()
+    parameters = fit_curves(processedZ, processedG)
 
-    ax1 = fig.add_subplot(121)
-    ax2 = fig.add_subplot(122)
+    fig, axs = plt.subplots(nrows=3, ncols=6)
+    for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
 
-    ax1.scatter(processedZ[0][0][0], processedG[0][0][0])
-    ax2.scatter(processedZ[0][0][1], processedG[0][0][1])
+        solar_tag = math.floor(i/6)
+        coordinates = math.floor((i-solar_tag*6)/2)
+        minmax = math.floor(i-solar_tag*6-coordinates*2)
 
-    print(processedZ[0][0][0])
-    print(processedG[0][0][0])
-    print('X')
-    print(processedZ[0][0][1])
-    print(processedG[0][0][1])
+        ax.scatter(processedZ[solar_tag][coordinates][minmax], processedG[solar_tag][coordinates][minmax])
+        GEV = GEV_CDF(processedZ[solar_tag][coordinates][minmax], parameters[solar_tag][coordinates][minmax][0], parameters[solar_tag][coordinates][minmax][1], parameters[solar_tag][coordinates][minmax][2])
+        ax.plot(processedZ[solar_tag][coordinates][minmax], GEV, 'r')
+        
+        ax.plot([], [], ' ', label='\u03BE = '+str(parameters[solar_tag][coordinates][minmax][0]))
+        ax.plot([], [], ' ', label='\u03BC = '+str(parameters[solar_tag][coordinates][minmax][1]))
+        ax.plot([], [], ' ', label='\u03C3 = '+str(parameters[solar_tag][coordinates][minmax][2]))
 
-    plt.show()
+        if minmax == 0:
+            ax.legend(loc='upper left')
+        else:
+            ax.legend(loc='upper right')
+
+    plt.show()"""
 
 main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, constants.save, constants.plotFileName)

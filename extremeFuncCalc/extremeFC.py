@@ -1,16 +1,19 @@
+from cmath import inf
 from spacepy import pycdf
 from tqdm import tqdm
+from tqdm import trange
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+from scipy.stats import genextreme as gev
 import os.path as path
 import math
 import extreme_constants as constants
 
 def GEV_CDF(z, xi, mu, sigma):
 
-    G = np.array([])
+    """G = np.array([])
     t=0
 
     for i in z:
@@ -21,7 +24,8 @@ def GEV_CDF(z, xi, mu, sigma):
         newG = math.e**(-t)
         G = np.append(G, newG)
 
-    return G
+    return G"""
+    return math.e**(-(1+xi*(z-mu)/sigma)**(-1/xi))
 
 def GEV_PDF(z, xi, mu, sigma):
 
@@ -174,36 +178,81 @@ def generateG(processedZ):
     G = [[[[], []], [[], []], [[], []]], 
         [[[], []], [[], []], [[], []]], 
         [[[], []], [[], []], [[], []]]]
+    z = [[[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]]]
 
     for solar_tag in range(3):
         for coordinate in range(3):
             for minmax in range(2):
-                currentLine = []
+                currentLineZ = []
+                currentLineG = []
+
+                #remove infs and NaNs and flipping sign of z for minima
                 for i in processedZ[solar_tag][coordinate][minmax]:
+                    if i != inf and math.isnan(i) == False:
+                        """if minmax == 1:
+                            currentLineZ.append(i)
+                        else:
+                            currentLineZ.append(-i)"""
+                        currentLineZ.append(i)
+
+                for i in currentLineZ:
                     if minmax == 0: #if list of minima
-                        currentLine.append(sum(i >= j for j in processedZ[solar_tag][coordinate][minmax]))
+                        currentLineG.append(sum(i <= j for j in processedZ[solar_tag][coordinate][minmax]))
                     if minmax == 1: #if list of maxima
-                        currentLine.append(sum(i <= j for j in processedZ[solar_tag][coordinate][minmax]))
+                        currentLineG.append(sum(i >= j for j in processedZ[solar_tag][coordinate][minmax]))
+                    #currentLineG.append(sum(i >= j for j in processedZ[solar_tag][coordinate][minmax]))
 
                 #normalise G
-                norm_factor = max(currentLine)
-                G[solar_tag][coordinate][minmax] = [currentElement/norm_factor for currentElement in currentLine]
+                norm_factor = max(currentLineG)
+                z[solar_tag][coordinate][minmax] = currentLineZ
+                G[solar_tag][coordinate][minmax] = [currentElement/norm_factor for currentElement in currentLineG]
+                #G[solar_tag][coordinate][minmax] = currentLineG
 
-    return G
+    return z, G
+
+def flipZ(processedZ):
+
+    z = [[[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]]]
+
+    for solar_tag in range(3):
+        for coordinate in range(3):
+            for minmax in range(2):
+                if minmax == 0:
+                    z[solar_tag][coordinate][minmax] = [-currentElement for currentElement in processedZ[solar_tag][coordinate][minmax]]
+                else :
+                    z[solar_tag][coordinate][minmax] = processedZ[solar_tag][coordinate][minmax]
+
+    return z
+
+def flipParam(param, minmax):
+
+    if minmax == 0:
+        param = -param
+    
+    return param
 
 def fit_curves(z, G):
 
     parameters = [[[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]]]
+    init=[[0.5, 6, 1], [0.5, 6, 1]]
 
-    for solar_tag in range(3):
-        for coordinate in range(3):
-            for minmax in range(2):
-                popt, _ = curve_fit(GEV_CDF, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=50000)
+    for solar_tag in trange(3, desc='Fitting Curves', position=0):
+        for coordinate in trange(3, desc='Fitting Curves', position=1, leave=False):
+            for minmax in trange(2, desc='Fitting Curves', position=2, leave=False):
+
+                popt, pcov = curve_fit(gev.cdf, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=500000, p0 = init[minmax])
                 xi, mu, sigma = popt
-                parameters[solar_tag][coordinate][minmax] = [xi, mu, sigma]
-
+                if minmax == 1:
+                    parameters[solar_tag][coordinate][minmax] = [xi, mu, sigma]
+                else:
+                    parameters[solar_tag][coordinate][minmax] = [xi, -mu, sigma]
+                
     return parameters
 
 def plotData(z, G, parameters, figure_labels, save, plotFileName):
@@ -215,31 +264,33 @@ def plotData(z, G, parameters, figure_labels, save, plotFileName):
 
         solar_tag = math.floor(i/12)
         cdfpdf = math.floor((i-solar_tag*12)/6)
-        coordinates = math.floor((i-solar_tag*12-cdfpdf*6)/2)
-        minmax = math.floor(i-solar_tag*12-cdfpdf*6-coordinates*2)
+        coordinate = math.floor((i-solar_tag*12-cdfpdf*6)/2)
+        minmax = math.floor(i-solar_tag*12-cdfpdf*6-coordinate*2)
 
-        subplot_title = figure_labels[1][cdfpdf]+' for '+figure_labels[0][solar_tag]+' '+figure_labels[2][coordinates]+' '+figure_labels[3][minmax]
+        subplot_title = figure_labels[1][cdfpdf]+' for '+figure_labels[0][solar_tag]+' '+figure_labels[2][coordinate]+' '+figure_labels[3][minmax]
         ax.title.set_text(subplot_title)
         ax.set(xlabel='z', ylabel='G(z)')
 
-        if cdfpdf == 0: #CDF
-            ax.scatter(z[solar_tag][coordinates][minmax], G[solar_tag][coordinates][minmax], s=1)
-            CDF = GEV_CDF(z[solar_tag][coordinates][minmax], parameters[solar_tag][coordinates][minmax][0], 
-                parameters[solar_tag][coordinates][minmax][1], parameters[solar_tag][coordinates][minmax][2])
-            ax.plot(z[solar_tag][coordinates][minmax], CDF, 'r')
-        else: #PDF
-            PDF = GEV_PDF(z[solar_tag][coordinates][minmax], parameters[solar_tag][coordinates][minmax][0], 
-                parameters[solar_tag][coordinates][minmax][1], parameters[solar_tag][coordinates][minmax][2])
-            ax.plot(z[solar_tag][coordinates][minmax], PDF, 'r')
+        flippedZ = flipZ(z)
 
-        ax.plot([], [], ' ', label='\u03BE = '+'{0:.3f}'.format(parameters[solar_tag][coordinates][minmax][0]))
-        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(parameters[solar_tag][coordinates][minmax][1]))
-        ax.plot([], [], ' ', label='\u03C3 = '+'{0:.3f}'.format(parameters[solar_tag][coordinates][minmax][2]))
+        if cdfpdf == 0: #CDF
+            ax.scatter(z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], s=1)
+            CDF = gev.cdf(flippedZ[solar_tag][coordinate][minmax], parameters[solar_tag][coordinate][minmax][0], 
+                flipParam(parameters[solar_tag][coordinate][minmax][1], minmax), parameters[solar_tag][coordinate][minmax][2])
+            ax.plot(z[solar_tag][coordinate][minmax], CDF, color='r')
+        else: #PDF
+            PDF = gev.pdf(flippedZ[solar_tag][coordinate][minmax], parameters[solar_tag][coordinate][minmax][0], 
+                parameters[solar_tag][coordinate][minmax][1], parameters[solar_tag][coordinate][minmax][2])
+            ax.plot(z[solar_tag][coordinate][minmax], PDF, color='r')
+
+        ax.plot([], [], ' ', label='\u03BE = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][0]))
+        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)))
+        ax.plot([], [], ' ', label='\u03C3 = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][2]))
 
         if minmax == 0:
-            ax.legend(loc='upper left')
+            ax.legend(loc='lower left')
         else:
-            ax.legend(loc='upper right')
+            ax.legend(loc='lower right')
 
     fig.subplots_adjust(wspace=0.25)
     if save:
@@ -255,30 +306,10 @@ def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_l
     #data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
     data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
     processedZ = distributeData(data)
-    processedG = generateG(processedZ)
-    parameters = fit_curves(processedZ, processedG)
+    processedZ, processedG = generateG(processedZ)
+    parameters = fit_curves(flipZ(processedZ), processedG)
     plotData(processedZ, processedG, parameters, figure_labels, save, plotFileName)
-    """fig, axs = plt.subplots(nrows=3, ncols=6)
-    for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
-
-        solar_tag = math.floor(i/6)
-        coordinates = math.floor((i-solar_tag*6)/2)
-        minmax = math.floor(i-solar_tag*6-coordinates*2)
-
-        ax.scatter(processedZ[solar_tag][coordinates][minmax], processedG[solar_tag][coordinates][minmax])
-        GEV = GEV_CDF(processedZ[solar_tag][coordinates][minmax], parameters[solar_tag][coordinates][minmax][0], parameters[solar_tag][coordinates][minmax][1], parameters[solar_tag][coordinates][minmax][2])
-        ax.plot(processedZ[solar_tag][coordinates][minmax], GEV, 'r')
-        
-        ax.plot([], [], ' ', label='\u03BE = '+str(parameters[solar_tag][coordinates][minmax][0]))
-        ax.plot([], [], ' ', label='\u03BC = '+str(parameters[solar_tag][coordinates][minmax][1]))
-        ax.plot([], [], ' ', label='\u03C3 = '+str(parameters[solar_tag][coordinates][minmax][2]))
-
-        if minmax == 0:
-            ax.legend(loc='upper left')
-        else:
-            ax.legend(loc='upper right')
-
-    plt.show()"""
+    
 
 main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
     constants.figure_labels, constants.save, constants.plotFileName)

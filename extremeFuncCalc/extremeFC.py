@@ -11,47 +11,17 @@ import os.path as path
 import math
 import extreme_constants as constants
 
-def GEV_CDF(z, xi, mu, sigma):
-
-    """G = np.array([])
-    t=0
-
-    for i in z:
-        if xi==0:
-            t = math.e**(-(i-mu)/sigma)
-        else:
-            t = (1+xi*(i-mu)/sigma)**(-1/xi)
-        newG = math.e**(-t)
-        G = np.append(G, newG)
-
-    return G"""
-    return math.e**(-(1+xi*(z-mu)/sigma)**(-1/xi))
-
-def GEV_PDF(z, xi, mu, sigma):
-
-    G = np.array([])
-    t=0
-
-    for i in z:
-        if xi==0:
-            t = math.e**(-(i-mu)/sigma)
-        else:
-            t = (1+xi*(i-mu)/sigma)**(-1/xi)
-        newG = 1/sigma*t**(xi+1)*math.e**(-t)
-        G = np.append(G, newG)
-
-    return G
-
 def importFileNames(filePath, fileListName):
 
     return list((filePath+i[:-1]) for i in open(fileListName, 'r'))[:-1]
 
-def fixList(data): #replaces too high and too low values with None
+def fixList(data): #deletes too high and too low values
 
     newData = []
     for i in range(len(data)):
-        if (data[i] > -1e5 and data[i] < 1e5) and (data[i] != 0):
-            newData.append(data[i])
+        if (data[i] is None) == False:
+            if (data[i] > -1e5 and data[i] < 1e5) and (data[i] != 0):
+                newData.append(data[i])
 
     return newData
 
@@ -169,7 +139,7 @@ def distributeData(data): #output has these indexes: processedData[solar_tag][co
     for solar_tag in range(3):
         for coordinate in range(3):
             for minmax in range(2):
-                processedData[solar_tag][coordinate][minmax] = sorted(processedData[solar_tag][coordinate][minmax])
+                processedData[solar_tag][coordinate][minmax] = sorted(fixList(processedData[solar_tag][coordinate][minmax]))
 
     return processedData
 
@@ -191,10 +161,6 @@ def generateG(processedZ):
                 #remove infs and NaNs and flipping sign of z for minima
                 for i in processedZ[solar_tag][coordinate][minmax]:
                     if i != inf and math.isnan(i) == False:
-                        """if minmax == 1:
-                            currentLineZ.append(i)
-                        else:
-                            currentLineZ.append(-i)"""
                         currentLineZ.append(i)
 
                 for i in currentLineZ:
@@ -255,10 +221,10 @@ def fit_curves(z, G):
                 
     return parameters
 
-def plotData(z, G, parameters, figure_labels, save, plotFileName):
+def plotData(z, G, parameters, figure_labels, save, plotFileName, plotTitle):
 
     fig, axs = plt.subplots(nrows=6, ncols=6)
-    fig.suptitle('Extreme Distributions of the IMF at L1 from 1998 to 2021', fontsize=35, y=0.93)
+    fig.suptitle(plotTitle, fontsize=35, y=1)
 
     for i, ax in tqdm(enumerate(axs.flat), desc='Plotting Data'):
 
@@ -280,7 +246,7 @@ def plotData(z, G, parameters, figure_labels, save, plotFileName):
             ax.plot(z[solar_tag][coordinate][minmax], CDF, color='r')
         else: #PDF
             PDF = gev.pdf(flippedZ[solar_tag][coordinate][minmax], parameters[solar_tag][coordinate][minmax][0], 
-                parameters[solar_tag][coordinate][minmax][1], parameters[solar_tag][coordinate][minmax][2])
+                flipParam(parameters[solar_tag][coordinate][minmax][1], minmax), parameters[solar_tag][coordinate][minmax][2])
             ax.plot(z[solar_tag][coordinate][minmax], PDF, color='r')
 
         ax.plot([], [], ' ', label='\u03BE = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][0]))
@@ -301,15 +267,15 @@ def plotData(z, G, parameters, figure_labels, save, plotFileName):
 
     return None
 
-def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, figure_labels, save, plotFileName):
+def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, figure_labels, save, plotFileName, plotTitle):
     #get block minima and maxima. process and save data, if it can't be loaded.
     #data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
     data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
     processedZ = distributeData(data)
     processedZ, processedG = generateG(processedZ)
     parameters = fit_curves(flipZ(processedZ), processedG)
-    plotData(processedZ, processedG, parameters, figure_labels, save, plotFileName)
+    plotData(processedZ, processedG, parameters, figure_labels, save, plotFileName, plotTitle)
     
 
 main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
-    constants.figure_labels, constants.save, constants.plotFileName)
+    constants.figure_labels, constants.save, constants.plotFileName, constants.plotTitle)

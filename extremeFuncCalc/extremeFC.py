@@ -201,18 +201,17 @@ def flipParam(param, minmax):
     
     return param
 
-def fit_curves(z, G):
+def fit_curves(z, G, init):
 
     parameters = [[[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]]]
-    init=[[0.5, 6, 1], [0.5, 6, 1]]
 
     for solar_tag in trange(3, desc='Fitting Curves', position=0):
         for coordinate in trange(3, desc='Fitting Curves', position=1, leave=False):
             for minmax in trange(2, desc='Fitting Curves', position=2, leave=False):
 
-                popt, pcov = curve_fit(gev.cdf, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=500000, p0 = init[minmax])
+                popt, pcov = curve_fit(gev.cdf, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=500000, p0 = init[solar_tag][coordinate][minmax])
                 xi, mu, sigma = popt
                 if minmax == 1:
                     parameters[solar_tag][coordinate][minmax] = [xi, mu, sigma]
@@ -267,15 +266,15 @@ def plotData(z, G, parameters, figure_labels, save, plotFileName, plotTitle):
 
     return None
 
-def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, figure_labels, save, plotFileName, plotTitle):
+def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, figure_labels, save, plotFileName, plotTitle, init):
     #get block minima and maxima. process and save data, if it can't be loaded.
     #data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
     data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
     processedZ = distributeData(data)
     processedZ, processedG = generateG(processedZ)
-    parameters = fit_curves(flipZ(processedZ), processedG)
+    parameters = fit_curves(flipZ(processedZ), processedG, init)
     plotData(processedZ, processedG, parameters, figure_labels, save, plotFileName, plotTitle)
     
 
 main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
-    constants.figure_labels, constants.save, constants.plotFileName, constants.plotTitle)
+    constants.figure_labels, constants.save, constants.plotFileName, constants.plotTitle, constants.init_guess)

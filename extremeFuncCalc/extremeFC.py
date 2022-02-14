@@ -252,10 +252,20 @@ def plotData(z, G, parameters, figure_labels, save, plotFileName, plotTitle):
         ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)))
         ax.plot([], [], ' ', label='\u03C3 = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][2]))
 
-        if minmax == 0:
-            ax.legend(loc='lower left')
+        legendloc=''
+        if cdfpdf == 0:
+            legendloc = legendloc + 'lower '
         else:
-            ax.legend(loc='lower right')
+            legendloc = legendloc + 'upper '
+        if minmax == 0:
+            legendloc = legendloc + 'left'
+        else:
+            legendloc = legendloc + 'right'
+        if constants.filePath==path.join('/home/MPHYS/Data/', 'SWE/'):
+            if coordinate == 0 and (cdfpdf == 1 or minmax == 1):
+                legendloc = 'upper left'
+        ax.legend(loc=legendloc, prop={'size': 10})
+
 
     fig.subplots_adjust(wspace=0.25)
     if save:

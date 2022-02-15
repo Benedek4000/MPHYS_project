@@ -9,13 +9,19 @@ solarActivityFileName = path.join(lPath, 'solarActivity.cdf')
 orig_labels = ['Epoch', 'BGSM']
 solar_labels = ['start', 'end', 'type']
 new_labels = ['solar_tag', 'minX', 'minY', 'minZ', 'maxX', 'maxY', 'maxZ']
-figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
+dist_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
+ret_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
 save = True #True to save the plot, False to show the plot
-plotFileName = path.join(lPath, 'extremeMFI.png')
-plotTitle=('EXTREME DISTRIBUTIONS OF THE IMF AT L1 FROM 1998 TO 2021\n'+
+plotDistFileName = path.join(lPath, 'extremeMFI.png')
+plotReturnFileName = path.join(lPath, 'extremeReturnMFI.png')
+plotDistTitle=('EXTREME DISTRIBUTIONS OF THE IMF AT L1 FROM 1998 TO 2021\n'+
         'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'and G(t) = exp(-t), where t(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = (1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$) for CDF')
+plotRetTitle=('RETURN PERIODS OF THE IMF AT L1 FROM 1998 TO 2021\n'+
+        'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
+        'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
+        'and Return Period (CDF) = 1/(365*(1-CDF)), where CDF(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = exp(-(1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$))')
 init_guess = [[[[], []], [[], []], [[], []]], [[[], []], [[], []], [[], []]], [[[], []], [[], []], [[], []]]] #set up initial guesses for curve fitting
 for solar_tag in range(3):
         for coordinate in range(3):
@@ -32,13 +38,19 @@ solarActivityFileName = path.join(lPath, 'solarActivity.cdf')
 orig_labels = ['Epoch', 'V_GSM']
 solar_labels = ['start', 'end', 'type']
 new_labels = ['solar_tag', 'minX', 'minY', 'minZ', 'maxX', 'maxY', 'maxZ']
-figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
+dist_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
+ret_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['X(GSM)', 'Y(GSM)', 'Z(GSM)'], ['Minima', 'Maxima']]
 save = True #True to save the plot, False to show the plot
-plotFileName = path.join(lPath, 'extremeSWE.png')
-plotTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND VELOCITY AT L1 FROM 1998 TO 2021\n'+
+plotDistFileName = path.join(lPath, 'extremeSWE.png')
+plotReturnFileName = path.join(lPath, 'extremeReturnSWE.png')
+plotDistTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND VELOCITY AT L1 FROM 1998 TO 2021\n'+
         'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'and G(t) = exp(-t), where t(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = (1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$) for CDF')
+plotRetTitle=('RETURN PERIODS OF SOLAR WIND VELOCITY AT L1 FROM 1998 TO 2021\n'+
+        'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
+        'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
+        'and Return Period (CDF) = 1/(365*(1-CDF)), where CDF(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = exp(-(1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$))')
 init_guess = [[[[], []], [[], []], [[], []]], #set up initial guesses for curve fitting
         [[[], []], [[], []], [[], []]], 
         [[[], []], [[], []], [[], []]]]

@@ -11,12 +11,17 @@ solarActivityFileName = path.join(lPath, 'solarActivity.cdf')
 orig_labels = ['Epoch', 'Np', 'Vp']
 solar_labels = ['start', 'end', 'type']
 new_labels = ['solar_tag', 'minP', 'maxP']
-figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['Minima', 'Maxima']]
+dist_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['CDF', 'PDF'], ['Minima', 'Maxima']]
+ret_figure_labels = [['Minimum', 'Intermediate', 'Maximum'], ['Minima', 'Maxima']]
 save = True #True to save the plot, False to show the plot
-plotFileName = path.join(lPath, 'extremeP.png')
-plotTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND RAM PRESSURE AT L1 FROM 1998 TO 2021\n'+
+plotDistFileName = path.join(lPath, 'extremeP.png')
+plotDistTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND RAM PRESSURE AT L1 FROM 1998 TO 2021\n'+
         '$\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'and G(t) = exp(-t), where t(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = (1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$) for CDF')
+plotRetFileName = path.join(lPath, 'extremeReturnP.png')
+plotRetTitle=('RETURN PERIODS OF SOLAR WIND RAM PRESSURE AT L1 FROM 1998 TO 2021\n'+
+        '$\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
+        'and Return Period (CDF) = 1/(365*(1-CDF)), where CDF(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = exp(-(1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$))')
 init_guess = [[[], []], [[], []], [[], []]] #set up initial guesses for curve fitting
 for solar_tag in range(3):
         for minmax in range(2):

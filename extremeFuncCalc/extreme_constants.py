@@ -1,5 +1,5 @@
 import os.path as path
-"""
+#"""
 #MFI
 lPath = '/home/MPHYS/Data/'
 filePath = path.join(lPath, 'MFI/')
@@ -64,3 +64,4 @@ for solar_tag in range(3):
                                 init_guess[solar_tag][coordinate][minmax] = [0.5, -400, 100]
                 else:
                         init_guess[solar_tag][coordinate][minmax] = [0.5, 6, 1]
+"""

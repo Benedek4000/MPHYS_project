@@ -7,11 +7,13 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.stats import genextreme as gev
+import sympy as sym
+from sympy.codegen.cfunctions import log10
 import os.path as path
 import math
 import extreme_constants as constants
 
-def returnLevel(z, parameters):
+def returnLevel(p, parameters):
 
     returnL = [[[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]], 
@@ -23,7 +25,7 @@ def returnLevel(z, parameters):
                 currentK=parameters[solar_tag][coordinate][minmax][0]
                 currentM=flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)
                 currentS=parameters[solar_tag][coordinate][minmax][2]
-                returnL[solar_tag][coordinate][minmax] = [1/(365*(1-CDF)) for CDF in gev.cdf(flipZ(z)[solar_tag][coordinate][minmax], c=currentK, loc=currentM, scale=currentS)]
+                returnL[solar_tag][coordinate][minmax] = [-(currentM-currentS/currentK*(1-(-math.log10(1-currentP))**(-currentK))) for currentP in p[solar_tag][coordinate][minmax]]
 
     return returnL
 
@@ -236,6 +238,10 @@ def fit_curves(z, G, init):
                         [[[], []], [[], []], [[], []]], 
                         [[[], []], [[], []], [[], []]]]
 
+    var_covar = [[[[], []], [[], []], [[], []]], 
+                [[[], []], [[], []], [[], []]], 
+                [[[], []], [[], []], [[], []]]]
+
     for solar_tag in trange(3, desc='Fitting Curves', position=0):
         for coordinate in trange(3, desc='Fitting Curves', position=1, leave=False):
             for minmax in trange(2, desc='Fitting Curves', position=2, leave=False):
@@ -244,14 +250,15 @@ def fit_curves(z, G, init):
                 xi, mu, sigma = popt
                 err_xi, err_mu, err_sigma = math.sqrt(pcov[0,0]), math.sqrt(pcov[1,1]), math.sqrt(pcov[2,2])
                 if minmax == 1:
-                    parameters[solar_tag][coordinate][minmax] = [xi, mu, sigma]
+                    parameters[solar_tag][coordinate][minmax] = [-xi, mu, sigma]
                 else:
-                    parameters[solar_tag][coordinate][minmax] = [xi, -mu, sigma]
+                    parameters[solar_tag][coordinate][minmax] = [-xi, -mu, sigma]
                 err_parameters[solar_tag][coordinate][minmax] = [err_xi, err_mu, err_sigma]
+                var_covar[solar_tag][coordinate][minmax] = pcov
                 
-    return parameters, err_parameters
+    return parameters, err_parameters, var_covar
 
-def plotDistData(z, G, parameters, err_parameters, figure_labels, save, plotFileName, plotTitle):
+def plotDistData(z, G, parameters, err_parameters, figure_labels, save, plotFileName, xaxis, units, plotTitle):
 
     fig, axs = plt.subplots(nrows=6, ncols=6)
     fig.suptitle(plotTitle, fontsize=35, y=1)
@@ -265,22 +272,22 @@ def plotDistData(z, G, parameters, err_parameters, figure_labels, save, plotFile
 
         subplot_title = figure_labels[1][cdfpdf]+' for '+figure_labels[0][solar_tag]+' '+figure_labels[2][coordinate]+' '+figure_labels[3][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='z', ylabel='G(z)')
+        ax.set(xlabel=xaxis+' ('+units+')', ylabel='G(z)')
 
         flippedZ = flipZ(z)
 
         if cdfpdf == 0: #CDF
             ax.scatter(z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], s=1)
-            CDF = gev.cdf(flippedZ[solar_tag][coordinate][minmax], parameters[solar_tag][coordinate][minmax][0], 
+            CDF = gev.cdf(flippedZ[solar_tag][coordinate][minmax], -parameters[solar_tag][coordinate][minmax][0], 
                 flipParam(parameters[solar_tag][coordinate][minmax][1], minmax), parameters[solar_tag][coordinate][minmax][2])
             ax.plot(z[solar_tag][coordinate][minmax], CDF, color='r')
         else: #PDF
-            PDF = gev.pdf(flippedZ[solar_tag][coordinate][minmax], parameters[solar_tag][coordinate][minmax][0], 
+            PDF = gev.pdf(flippedZ[solar_tag][coordinate][minmax], -parameters[solar_tag][coordinate][minmax][0], 
                 flipParam(parameters[solar_tag][coordinate][minmax][1], minmax), parameters[solar_tag][coordinate][minmax][2])
             ax.plot(z[solar_tag][coordinate][minmax], PDF, color='r')
 
         ax.plot([], [], ' ', label='\u03BE = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][0])+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][0]))
-        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(flipParam(parameters[solar_tag][coordinate][minmax][1], minmax))+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][2]))
+        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(flipParam(parameters[solar_tag][coordinate][minmax][1], minmax))+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][1]))
         ax.plot([], [], ' ', label='\u03C3 = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][2])+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][2]))
 
         legendloc=''
@@ -307,20 +314,38 @@ def plotDistData(z, G, parameters, err_parameters, figure_labels, save, plotFile
 
     return None
 
-def generateReturnData(z, parameters):
+def generateReturnData(z, parameters, var_covar):
 
-    dispZ = [[[[], []], [[], []], [[], []]], 
+    R = [[[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]]]
+
+    P = [[[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]], 
+        [[[], []], [[], []], [[], []]]]
+
+    err_RL = [[[[], []], [[], []], [[], []]], 
             [[[], []], [[], []], [[], []]], 
             [[[], []], [[], []], [[], []]]]
+
+    p, k, m, s = sym.symbols('p k m s')
+    z=m-s/k*(1-(-log10(1-p))**(-k))
+    deltaZ=[sym.diff(z, k), sym.diff(z, m), sym.diff(z, s)]
 
     for solar_tag in range(3):
         for coordinate in range(3):
             for minmax in range(2):
-                dispZ[solar_tag][coordinate][minmax] = np.linspace(min(z[solar_tag][coordinate][minmax]), 2.5*max(z[solar_tag][coordinate][minmax])-1.5*min(z[solar_tag][coordinate][minmax]), 101)
+                R[solar_tag][coordinate][minmax] = [10**i for i in np.linspace(-1, 3, num=101)]
+                P[solar_tag][coordinate][minmax] = [1/(currentR*365) for currentR in R[solar_tag][coordinate][minmax]]
+                currentK = parameters[solar_tag][coordinate][minmax][0]
+                currentM = flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)
+                currentS = parameters[solar_tag][coordinate][minmax][2]
+                currentDZ=[i.subs(k, currentK).subs(m, currentM).subs(s, currentS) for i in deltaZ]
+                err_RL[solar_tag][coordinate][minmax] = [math.sqrt(np.matmul(np.matmul([i.subs(p, currentP).evalf() for i in currentDZ], var_covar[solar_tag][coordinate][minmax]), [i.subs(p, currentP).evalf() for i in currentDZ])) for currentP in P[solar_tag][coordinate][minmax]]
 
-    return dispZ, logData(returnLevel(flipZ(dispZ), parameters))
+    return logData(R), returnLevel(P, parameters), err_RL
 
-def plotReturnData(z, returnL, figure_labels, save, plotFileName, plotTitle):
+def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, units, plotTitle):
 
     fig, axs = plt.subplots(nrows=3, ncols=6)
     fig.suptitle(plotTitle, fontsize=35, y=1)
@@ -331,13 +356,14 @@ def plotReturnData(z, returnL, figure_labels, save, plotFileName, plotTitle):
         coordinate = math.floor((i-solar_tag*6)/2)
         minmax = math.floor(i-solar_tag*6-coordinate*2)
 
-        subplot_title = 'Return Periods for '+figure_labels[0][solar_tag]+' '+figure_labels[1][coordinate]+' '+figure_labels[2][minmax]
+        subplot_title = 'Return Levels for '+figure_labels[0][solar_tag]+' '+figure_labels[1][coordinate]+' '+figure_labels[2][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='z', ylabel='log10 Return Period (years)')
+        ax.set(xlabel='log10 Return Period (years)', ylabel='Return Level ('+units+')')
 
-        flippedZ = flipZ(z)
-
-        ax.plot(flippedZ[solar_tag][coordinate][minmax], returnL[solar_tag][coordinate][minmax], color='r')
+        ax.plot(R[solar_tag][coordinate][minmax], returnL[solar_tag][coordinate][minmax], color='b')
+        regTop=[returnL[solar_tag][coordinate][minmax][i]+err_RL[solar_tag][coordinate][minmax][i] for i in range(len(err_RL[solar_tag][coordinate][minmax]))]
+        regBot=[returnL[solar_tag][coordinate][minmax][i]-err_RL[solar_tag][coordinate][minmax][i] for i in range(len(err_RL[solar_tag][coordinate][minmax]))]
+        ax.fill_between(x=R[solar_tag][coordinate][minmax], y1=regBot, y2=regTop, color='r', alpha=0.2)
         ax.ticklabel_format(useOffset=False, style='plain')
 
     fig.subplots_adjust(wspace=0.25)
@@ -350,17 +376,17 @@ def plotReturnData(z, returnL, figure_labels, save, plotFileName, plotTitle):
     return None
 
 
-def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, dist_figure_labels, ret_figure_labels, save, plotDistFileName, plotRetFileName, plotDistTitle, plotRetTitle, init):
+def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, dist_figure_labels, ret_figure_labels, save, plotDistFileName, plotRetFileName, xaxis, units, plotDistTitle, plotRetTitle, init):
     #get block minima and maxima. process and save data, if it can't be loaded.
     #data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
     data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
     processedZ = distributeData(data)
     processedZ, processedG = generateG(processedZ)
-    parameters, err_parameters = fit_curves(flipZ(processedZ), processedG, init)
-    plotDistData(processedZ, processedG, parameters, err_parameters, dist_figure_labels, save, plotDistFileName, plotDistTitle)
-    retZ, retL = generateReturnData(flipZ(processedZ), parameters)
-    plotReturnData(retZ, retL, ret_figure_labels, save, plotRetFileName, plotRetTitle)
+    parameters, err_parameters, var_covar = fit_curves(flipZ(processedZ), processedG, init)
+    plotDistData(processedZ, processedG, parameters, err_parameters, dist_figure_labels, save, plotDistFileName, xaxis, units, plotDistTitle)
+    retR, retL, err_RL = generateReturnData(flipZ(processedZ), parameters, var_covar)
+    plotReturnData(retR, retL, err_RL, ret_figure_labels, save, plotRetFileName, units, plotRetTitle)
     
 
 main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
-    constants.dist_figure_labels, constants.ret_figure_labels, constants.save, constants.plotDistFileName, constants.plotReturnFileName, constants.plotDistTitle, constants.plotRetTitle, constants.init_guess)
+    constants.dist_figure_labels, constants.ret_figure_labels, constants.save, constants.plotDistFileName, constants.plotReturnFileName, constants.property, constants.units, constants.plotDistTitle, constants.plotRetTitle, constants.init_guess)

@@ -21,7 +21,7 @@ plotDistTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND RAM PRESSURE AT L1 FROM 1998
 plotRetFileName = path.join(lPath, 'extremeReturnP.png')
 plotRetTitle=('RETURN PERIODS OF SOLAR WIND RAM PRESSURE AT L1 FROM 1998 TO 2021\n'+
         '$\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
-        'and Return Period (CDF) = 1/(365*(1-CDF)), where CDF(z, $\^\u03BE$, $\^\u03BC$, $\^\u03C3$) = exp(-(1+$\^\u03BE$(($\^z$-$\^\u03BC$)/$\^\u03C3$))^(-1/$\^\u03BE$))')
+        'and Return Level = $\^\u03BC$-$\^\u03C3$/$\^\u03BE$*(1-(-log(1-1/R))^(-$\^\u03BE$)), where R is the Return Period in years')
 init_guess = [[[], []], [[], []], [[], []]] #set up initial guesses for curve fitting
 for solar_tag in range(3):
         for minmax in range(2):

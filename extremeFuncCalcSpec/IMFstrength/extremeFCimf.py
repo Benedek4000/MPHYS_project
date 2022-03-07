@@ -8,10 +8,10 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.stats import genextreme as gev
 import sympy as sym
-from sympy.codegen.cfunctions import log10
+from sympy.codegen.cfunctions import log
 import os.path as path
 import math
-import extreme_constants_pressure as constants
+import extreme_constants_imf as constants
 
 #P_ram=n*m_p*V^2, n=proton density, m_p=proton mass, V=solar wind bulk velocity
 #assuming all positive particles are protons
@@ -51,7 +51,7 @@ def fixList(data): #deletes too high and too low values
 
     return newData
 
-def getDayMinimumMaximum(m, fileName, orig_labels):
+def getDayMinimumMaximum(fileName, orig_labels):
 
     Plist = []
 
@@ -59,9 +59,8 @@ def getDayMinimumMaximum(m, fileName, orig_labels):
         no_of_entries = len(currentFile[orig_labels[0]][:])
         currentEpoch = currentFile[orig_labels[0]][0]
         for i in range(no_of_entries):
-            currentN = currentFile[orig_labels[1]][i]
-            currentV = currentFile[orig_labels[2]][i]
-            Plist.append(10e21*currentN*m*currentV**2) #n/cm-3 * kg * km^2/s^2 -> kg*km^2*cm^-3*s^-2 -> 10e-21*kg*m-1*s^-2 -> nPa 
+            cE = currentFile[orig_labels[1]][i]
+            Plist.append(math.sqrt(cE[0]**2+cE[1]**2+cE[2]**2))
 
     Plist = fixList(Plist)
 
@@ -114,7 +113,7 @@ def saveData(data, combinedFileName, labels):
         saveFile[labels[i]] = pd.DataFrame(data)[i].tolist()
     saveFile.close()
 
-def getBlockMinimaMaxima(m, combinedFileName, filenames, orig_labels, solarActivityFileName, solar_labels, new_labels):
+def getBlockMinimaMaxima(combinedFileName, filenames, orig_labels, solarActivityFileName, solar_labels, new_labels):
 
     if path.isfile(combinedFileName): #imports data from combined cdf if it exists
         with pycdf.CDF(combinedFileName) as dataFile:
@@ -129,7 +128,7 @@ def getBlockMinimaMaxima(m, combinedFileName, filenames, orig_labels, solarActiv
     else:
         data = []
         for currentFileName in tqdm(filenames, desc='Retrieving Block Minima and Block Maxima'):
-            data.append(getDayMinimumMaximum(m, currentFileName, orig_labels))
+            data.append(getDayMinimumMaximum(currentFileName, orig_labels))
         #replace epoch with solar activity tag ('min', 'int' or 'max')
         data = epochToSolarActivity(data, solarActivityFileName, solar_labels)
         saveData(data, combinedFileName, new_labels)
@@ -243,7 +242,7 @@ def plotData(z, G, parameters, err_parameters, figure_labels, save, plotFileName
 
         subplot_title = figure_labels[1][cdfpdf]+' for '+figure_labels[0][solar_tag]+' '+figure_labels[2][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='z (nPa)', ylabel='G(z)')
+        ax.set(xlabel='z (nT)', ylabel='G(z)')
 
         #flippedZ = flipZ(z)
         flippedZ = z
@@ -285,7 +284,7 @@ def generateReturnData(z, parameters, var_covar):
     err_RL = [[[], []], [[], []], [[], []]]
 
     p, k, m, s = sym.symbols('p k m s')
-    z=m-s/k*(1-(-log10(1-p))**(-k))
+    z=m-s/k*(1-(-log(1-p))**(-k))
     deltaZ=[sym.diff(z, k), sym.diff(z, m), sym.diff(z, s)]
 
     for solar_tag in range(3):
@@ -312,7 +311,7 @@ def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, plotTi
 
         subplot_title = 'Return Levels for '+figure_labels[0][solar_tag]+' '+figure_labels[1][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='log10 Return Period (years)', ylabel='Return Level (nPa)')
+        ax.set(xlabel='log10 Return Period (years)', ylabel='Return Level (nT)')
 
         ax.plot(R[solar_tag][minmax], returnL[solar_tag][minmax], color='b')
         regTop=[returnL[solar_tag][minmax][i]+err_RL[solar_tag][minmax][i] for i in range(len(err_RL[solar_tag][minmax]))]
@@ -329,10 +328,10 @@ def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, plotTi
 
     return None
 
-def main(m, fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, dist_figure_labels, ret_figure_labels, save, plotDistFileName, plotRetFileName, plotDistTitle, plotRetTitle, init):
+def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_labels, solar_labels, new_labels, dist_figure_labels, ret_figure_labels, save, plotDistFileName, plotRetFileName, plotDistTitle, plotRetTitle, init):
     #get block minima and maxima. process and save data, if it can't be loaded.
     #data=[solar_activity_tag, minX, minY, minZ, maxX, maxY, maxZ]. solar_activity_tag is either 'min', 'int' or 'max'
-    data = getBlockMinimaMaxima(m, combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
+    data = getBlockMinimaMaxima(combinedFileName, importFileNames(filePath, fileListName), orig_labels, solarActivityFileName, solar_labels, new_labels)
     processedZ = distributeData(data)
     processedZ, processedG = generateG(processedZ)
     parameters, err_parameters, var_covar = fit_curves(processedZ, processedG, init)
@@ -342,5 +341,5 @@ def main(m, fileListName, filePath, combinedFileName, solarActivityFileName, ori
     plotReturnData(retR, retL, err_RL, ret_figure_labels, save, plotRetFileName, plotRetTitle)
     
 
-main(constants.m_p, constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
+main(constants.fileListName, constants.filePath, constants.combinedFileName, constants.solarActivityFileName, constants.orig_labels, constants.solar_labels, constants.new_labels, 
     constants.dist_figure_labels, constants.ret_figure_labels, constants.save, constants.plotDistFileName, constants.plotRetFileName, constants.plotDistTitle, constants.plotRetTitle, constants.init_guess)

@@ -23,7 +23,7 @@ plotDistTitle=('EXTREME DISTRIBUTIONS OF THE IMF AT L1 FROM 1998 TO 2021\n'+
 plotRetTitle=('RETURN LEVELS AND RETURN PERIODS OF THE IMF AT L1 FROM 1998 TO 2021\n'+
         'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
-        'and Return Level = $\^\u03BC$-$\^\u03C3$/$\^\u03BE$*(1-(-log(1-1/R))^(-$\^\u03BE$)), where R is the Return Period in years')
+        'and Return Level = $\^\u03BC$+$\^\u03C3$/$\^\u03BE$*((-log(1-1/R))^(-$\^\u03BE$)-1), where R is the Return Period in days')
 init_guess = [[[[], []], [[], []], [[], []]], [[[], []], [[], []], [[], []]], [[[], []], [[], []], [[], []]]] #set up initial guesses for curve fitting
 for solar_tag in range(3):
         for coordinate in range(3):
@@ -54,7 +54,7 @@ plotDistTitle=('EXTREME DISTRIBUTIONS OF SOLAR WIND VELOCITY AT L1 FROM 1998 TO 
 plotRetTitle=('RETURN LEVELS AND RETURN PERIODS OF SOLAR WIND VELOCITY AT L1 FROM 1998 TO 2021\n'+
         'For figures of block minima, $\^z$ = -z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
         'For figures of block maxima, $\^z$ = z, $\^\u03BE$ = \u03BE, $\^\u03BC$ = \u03BC, $\^\u03C3$ = \u03C3\n'+
-        'and Return Level = $\^\u03BC$-$\^\u03C3$/$\^\u03BE$*(1-(-log(1-1/R))^(-$\^\u03BE$)), where R is the Return Period in years')
+        'and Return Level = $\^\u03BC$+$\^\u03C3$/$\^\u03BE$*((-log(1-1/R))^(-$\^\u03BE$)-1), where R is the Return Period in days')
 init_guess = [[[[], []], [[], []], [[], []]], #set up initial guesses for curve fitting
         [[[], []], [[], []], [[], []]], 
         [[[], []], [[], []], [[], []]]]
@@ -68,4 +68,4 @@ for solar_tag in range(3):
                                 init_guess[solar_tag][coordinate][minmax] = [0.5, -400, 100]
                 else:
                         init_guess[solar_tag][coordinate][minmax] = [0.5, 6, 1]
-#"""
+"""

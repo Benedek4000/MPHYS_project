@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.stats import genextreme as gev
 import sympy as sym
-from sympy.codegen.cfunctions import log10
+from sympy.codegen.cfunctions import log
 import os.path as path
 import math
 import extreme_constants as constants
@@ -23,11 +23,11 @@ def returnLevel(p, parameters):
         for coordinate in range(3):
             for minmax in range(2):
                 currentK=parameters[solar_tag][coordinate][minmax][0]
-                currentM=flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)
+                currentM=parameters[solar_tag][coordinate][minmax][1]
                 currentS=parameters[solar_tag][coordinate][minmax][2]
-                returnL[solar_tag][coordinate][minmax] = [-(currentM-currentS/currentK*(1-(-math.log10(1-currentP))**(-currentK))) for currentP in p[solar_tag][coordinate][minmax]]
+                returnL[solar_tag][coordinate][minmax] = [currentM+currentS/currentK*((-math.log(1-currentP))**(-currentK)-1) for currentP in p[solar_tag][coordinate][minmax]]
 
-    return returnL
+    return flipZ(returnL)
 
 def logData(data):
     
@@ -185,7 +185,7 @@ def generateG(processedZ):
                 currentLineZ = []
                 currentLineG = []
 
-                #remove infs and NaNs and flipping sign of z for minima
+                #remove infs and NaNs
                 for i in processedZ[solar_tag][coordinate][minmax]:
                     if i != inf and math.isnan(i) == False:
                         currentLineZ.append(i)
@@ -223,8 +223,8 @@ def flipZ(processedZ):
 
 def flipParam(param, minmax):
 
-    if minmax == 0:
-        param = -param
+    """if minmax == 0:
+        param = -param"""
     
     return param
 
@@ -235,8 +235,8 @@ def fit_curves(z, G, init):
                 [[[], []], [[], []], [[], []]]]
 
     err_parameters = [[[[], []], [[], []], [[], []]], 
-                        [[[], []], [[], []], [[], []]], 
-                        [[[], []], [[], []], [[], []]]]
+                    [[[], []], [[], []], [[], []]], 
+                    [[[], []], [[], []], [[], []]]]
 
     var_covar = [[[[], []], [[], []], [[], []]], 
                 [[[], []], [[], []], [[], []]], 
@@ -249,10 +249,8 @@ def fit_curves(z, G, init):
                 popt, pcov = curve_fit(gev.cdf, z[solar_tag][coordinate][minmax], G[solar_tag][coordinate][minmax], maxfev=500000, p0 = init[solar_tag][coordinate][minmax])
                 xi, mu, sigma = popt
                 err_xi, err_mu, err_sigma = math.sqrt(pcov[0,0]), math.sqrt(pcov[1,1]), math.sqrt(pcov[2,2])
-                if minmax == 1:
-                    parameters[solar_tag][coordinate][minmax] = [-xi, mu, sigma]
-                else:
-                    parameters[solar_tag][coordinate][minmax] = [-xi, -mu, sigma]
+                parameters[solar_tag][coordinate][minmax] = [-xi, flipParam(mu, minmax), sigma]
+                #parameters[solar_tag][coordinate][minmax] = [-xi, mu, sigma]
                 err_parameters[solar_tag][coordinate][minmax] = [err_xi, err_mu, err_sigma]
                 var_covar[solar_tag][coordinate][minmax] = pcov
                 
@@ -287,7 +285,7 @@ def plotDistData(z, G, parameters, err_parameters, figure_labels, save, plotFile
             ax.plot(z[solar_tag][coordinate][minmax], PDF, color='r')
 
         ax.plot([], [], ' ', label='\u03BE = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][0])+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][0]))
-        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(flipParam(parameters[solar_tag][coordinate][minmax][1], minmax))+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][1]))
+        ax.plot([], [], ' ', label='\u03BC = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][1])+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][1]))
         ax.plot([], [], ' ', label='\u03C3 = '+'{0:.3f}'.format(parameters[solar_tag][coordinate][minmax][2])+r'$\pm$'+'{0:.3f}'.format(err_parameters[solar_tag][coordinate][minmax][2]))
 
         legendloc=''
@@ -329,16 +327,17 @@ def generateReturnData(z, parameters, var_covar):
             [[[], []], [[], []], [[], []]]]
 
     p, k, m, s = sym.symbols('p k m s')
-    z=m-s/k*(1-(-log10(1-p))**(-k))
+    z=m-s/k*(1-(-log(1-p))**(-k))
     deltaZ=[sym.diff(z, k), sym.diff(z, m), sym.diff(z, s)]
 
     for solar_tag in range(3):
         for coordinate in range(3):
             for minmax in range(2):
                 R[solar_tag][coordinate][minmax] = [10**i for i in np.linspace(-1, 3, num=101)]
-                P[solar_tag][coordinate][minmax] = [1/(currentR*365) for currentR in R[solar_tag][coordinate][minmax]]
+                P[solar_tag][coordinate][minmax] = [1/(365*currentR) for currentR in R[solar_tag][coordinate][minmax]]
                 currentK = parameters[solar_tag][coordinate][minmax][0]
-                currentM = flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)
+                #currentM = flipParam(parameters[solar_tag][coordinate][minmax][1], minmax)
+                currentM = parameters[solar_tag][coordinate][minmax][1]
                 currentS = parameters[solar_tag][coordinate][minmax][2]
                 currentDZ=[i.subs(k, currentK).subs(m, currentM).subs(s, currentS) for i in deltaZ]
                 err_RL[solar_tag][coordinate][minmax] = [math.sqrt(np.matmul(np.matmul([i.subs(p, currentP).evalf() for i in currentDZ], var_covar[solar_tag][coordinate][minmax]), [i.subs(p, currentP).evalf() for i in currentDZ])) for currentP in P[solar_tag][coordinate][minmax]]

@@ -29,3 +29,4 @@ for solar_tag in range(3):
                         init_guess[solar_tag][minmax] = [0.5, 0.2, 1]
                 else:
                         init_guess[solar_tag][minmax] = [0.5, -0.2, 1]
+parameter_filename=path.join(lPath, 'Pparameters.cdf')

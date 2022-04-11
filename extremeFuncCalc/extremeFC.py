@@ -253,6 +253,12 @@ def fit_curves(z, G, init):
                 #parameters[solar_tag][coordinate][minmax] = [-xi, mu, sigma]
                 err_parameters[solar_tag][coordinate][minmax] = [err_xi, err_mu, err_sigma]
                 var_covar[solar_tag][coordinate][minmax] = pcov
+
+    print('Exporting parameters into '+constants.parameter_filename)
+    pycdf.lib.set_backward(False)
+    saveFile = pycdf.CDF(constants.parameter_filename, '')
+    saveFile['parameters']=parameters
+    saveFile.close()
                 
     return parameters, err_parameters, var_covar
 

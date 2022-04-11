@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.stats import genextreme as gev
 import sympy as sym
-from sympy.codegen.cfunctions import log10
+from sympy.codegen.cfunctions import log
 import os.path as path
 import math
 import extreme_constants_pressure as constants
@@ -269,7 +269,7 @@ def plotData(z, G, parameters, err_parameters, figure_labels, save, plotFileName
 
     fig.subplots_adjust(wspace=0.25)
     if save:
-        fig.set_size_inches(40, 30)
+        fig.set_size_inches(20, 30)
         plt.savefig(plotFileName, bbox_inches='tight', dpi=100)
     else:
         plt.show()
@@ -285,7 +285,7 @@ def generateReturnData(z, parameters, var_covar):
     err_RL = [[[], []], [[], []], [[], []]]
 
     p, k, m, s = sym.symbols('p k m s')
-    z=m-s/k*(1-(-log10(1-p))**(-k))
+    z=m-s/k*(1-(-log(1-p))**(-k))
     deltaZ=[sym.diff(z, k), sym.diff(z, m), sym.diff(z, s)]
 
     for solar_tag in range(3):
@@ -312,7 +312,7 @@ def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, plotTi
 
         subplot_title = 'Return Levels for '+figure_labels[0][solar_tag]+' '+figure_labels[1][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='log10 Return Period (years)', ylabel='Return Level (nPa)')
+        ax.set(xlabel='log Return Period (years)', ylabel='Return Level (nPa)')
 
         ax.plot(R[solar_tag][minmax], returnL[solar_tag][minmax], color='b')
         regTop=[returnL[solar_tag][minmax][i]+err_RL[solar_tag][minmax][i] for i in range(len(err_RL[solar_tag][minmax]))]
@@ -322,7 +322,7 @@ def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, plotTi
 
     fig.subplots_adjust(wspace=0.25)
     if save:
-        fig.set_size_inches(40, 30)
+        fig.set_size_inches(20, 30)
         plt.savefig(plotFileName, bbox_inches='tight', dpi=100)
     else:
         plt.show()

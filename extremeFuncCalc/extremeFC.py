@@ -357,7 +357,7 @@ def plotReturnData(R, returnL, err_RL, figure_labels, save, plotFileName, units,
 
         subplot_title = 'Return Levels for '+figure_labels[0][solar_tag]+' '+figure_labels[1][coordinate]+' '+figure_labels[2][minmax]
         ax.title.set_text(subplot_title)
-        ax.set(xlabel='log10 Return Period (years)', ylabel='Return Level ('+units+')')
+        ax.set(xlabel='log Return Period (years)', ylabel='Return Level ('+units+')')
 
         ax.plot(R[solar_tag][coordinate][minmax], returnL[solar_tag][coordinate][minmax], color='b')
         regTop=[returnL[solar_tag][coordinate][minmax][i]+err_RL[solar_tag][coordinate][minmax][i] for i in range(len(err_RL[solar_tag][coordinate][minmax]))]

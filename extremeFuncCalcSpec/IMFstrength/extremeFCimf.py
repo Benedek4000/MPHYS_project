@@ -13,8 +13,6 @@ import os.path as path
 import math
 import extreme_constants_imf as constants
 
-#P_ram=n*m_p*V^2, n=proton density, m_p=proton mass, V=solar wind bulk velocity
-#assuming all positive particles are protons
 
 def returnLevel(p, parameters):
 
@@ -193,12 +191,11 @@ def flipZ(processedZ):
     z = [[[], []], [[], []], [[], []]]
 
     for solar_tag in range(3):
-        for coordinate in range(3):
-            for minmax in range(2):
-                if minmax == 0:
-                    z[solar_tag][minmax] = [-currentElement for currentElement in processedZ[solar_tag][minmax]]
-                else :
-                    z[solar_tag][minmax] = processedZ[solar_tag][minmax]
+        for minmax in range(2):
+            if minmax == 0:
+                z[solar_tag][minmax] = [-currentElement for currentElement in processedZ[solar_tag][minmax]]
+            else :
+                z[solar_tag][minmax] = processedZ[solar_tag][minmax]
 
     return z
 
@@ -335,7 +332,6 @@ def main(fileListName, filePath, combinedFileName, solarActivityFileName, orig_l
     processedZ = distributeData(data)
     processedZ, processedG = generateG(processedZ)
     parameters, err_parameters, var_covar = fit_curves(processedZ, processedG, init)
-    #FUNCTIONS MODIFIED UNTIL HERE
     plotData(processedZ, processedG, parameters, err_parameters, dist_figure_labels, save, plotDistFileName, plotDistTitle)
     retR, retL, err_RL = generateReturnData(processedZ, parameters, var_covar)
     plotReturnData(retR, retL, err_RL, ret_figure_labels, save, plotRetFileName, plotRetTitle)

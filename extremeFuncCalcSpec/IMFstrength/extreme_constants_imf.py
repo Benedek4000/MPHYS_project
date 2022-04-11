@@ -25,4 +25,4 @@ for solar_tag in range(3):
                 if minmax == 0:
                         init_guess[solar_tag][minmax] = [0.5, 0.2, 1]
                 else:
-                        init_guess[solar_tag][minmax] = [0.5, -0.2, 1]
+                        init_guess[solar_tag][minmax] = [0.3, 10, 3]

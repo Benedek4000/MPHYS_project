@@ -220,15 +220,15 @@ def plotData(processedData, entryNo, bin_structure, axisLabels, save, histogramF
         x_axis = np.linspace(bin_structure[0]+0.5*bin_structure[1], bin_structure[0]+bin_structure[1]*bin_structure[2]+0.5*bin_structure[1], num = bin_structure[2])
         #x_axis: start = bin1_lower_limit+0.5*bin_width, stop = bin1_lower_limit+bin_width*no_of_bins+0.5*bin_width, num = no_of_bins
         ax.plot(x_axis, processedData[i]/entryNo[i])
-        ax.set(xlabel=axisLabels[i], ylabel='log % Occurence')
+        ax.set(xlabel=axisLabels[i]+' (km/s)', ylabel='log % Occurence')
         ax.set_yscale('log')    
         ax.axvline(mean[i], color='red', linewidth=1.5, label='\u03BC = '+'{0:.3f}'.format(mean[i]))
         ax.axvline(mean[i]+std_dev[i], color='green', linewidth=0.5, label='\u03C3 = '+'{0:.3f}'.format(std_dev[i]))
         ax.axvline(mean[i]-std_dev[i], color='green', linewidth=0.5)
-        ax.axvline(mean[i]+3*std_dev[i], color='red', linewidth=1.0, label='3\u03C3 = '+'{0:.3f}'.format(3*std_dev[i]))
+        """ax.axvline(mean[i]+3*std_dev[i], color='red', linewidth=1.0, label='3\u03C3 = '+'{0:.3f}'.format(3*std_dev[i]))
         ax.axvline(mean[i]-3*std_dev[i], color='red', linewidth=1.0)
         ax.axvline(mean[i]+4*std_dev[i], color='black', linewidth=1.0, label='4\u03C3 = '+'{0:.3f}'.format(4*std_dev[i]))
-        ax.axvline(mean[i]-4*std_dev[i], color='black', linewidth=1.0)
+        ax.axvline(mean[i]-4*std_dev[i], color='black', linewidth=1.0)"""
         ax.axvline(mean[i]+5*std_dev[i], color='purple', linewidth=1.0, label='5\u03C3 = '+'{0:.3f}'.format(5*std_dev[i]))
         ax.axvline(mean[i]-5*std_dev[i], color='purple', linewidth=1.0)
         ax.legend(loc='upper right')

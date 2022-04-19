@@ -47,7 +47,7 @@ with pycdf.CDF(p_file) as parameter_file:
         if levper=='period':
             if minmax==0: #minima
                 results.append(-mu+sigma/xi*(1-(-math.log(1-1/(365*value)))**(-xi)))
-            elif minmax==0: #maxima
+            elif minmax==1: #maxima
                 results.append(mu-sigma/xi*(1-(-math.log(1-1/(365*value)))**(-xi)))
         elif levper=='level':
             if minmax==0: #minima
@@ -60,4 +60,4 @@ with pycdf.CDF(p_file) as parameter_file:
         print('Return Level = '+str(result)+" nT or km/s or nPa")
     elif levper=='level': #calculate return period
         result=3/(1/results[0]+1/results[1]+1/results[2])
-        print('Return Period = '+str(result)+" years")
+        print('Return Period = '+str(result)+" years = ",str(365*result), " days")
